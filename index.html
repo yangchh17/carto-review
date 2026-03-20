@@ -243,19 +243,17 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .row-history-wrap.open .rht-chevron { transform: rotate(180deg); }
 .row-history-body { display: none; background: #fafaf8; border-top: 1px solid #f0f0ee; }
 .row-history-wrap.open .row-history-body { display: block; }
-.rh-item { display: grid; grid-template-columns: 70px 120px 1fr 90px; gap: 0 10px; padding: 5px 14px; border-bottom: 1px solid #f2f2f0; font-size: 11px; align-items: start; }
+.rh-item { display: grid; grid-template-columns: 62px 110px 100px 90px 1fr 80px; gap: 0 8px; padding: 5px 14px; border-bottom: 1px solid #f2f2f0; font-size: 11px; align-items: center; }
 .rh-item:last-child { border-bottom: none; }
 .rh-round { font-weight: 600; color: #555; font-size: 10.5px; }
 .rh-ts { font-size: 10px; color: #bbb; font-family: 'Courier New', monospace; }
-.rh-note { color: #444; line-height: 1.45; }
+.rh-note { color: #444; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 .rh-note.empty { color: #ccc; font-style: italic; }
 .rh-status {}
-.rh-meta { display: flex; align-items: center; gap: 6px; padding: 2px 14px 5px; border-bottom: 1px solid #f2f2f0; }
-.rh-meta:last-child { border-bottom: none; }
+.rh-person { font-size: 10px; color: #aaa; }
 .rh-dir-chip { font-size: 9.5px; font-weight: 600; padding: 1px 7px; border-radius: 8px; }
 .rh-dir-chip.chip-mapper   { background: #fff3e8; color: #b05800; border: 1px solid #e0a060; }
 .rh-dir-chip.chip-guidance { background: #e8f0fe; color: #1a56b0; border: 1px solid #90b8f0; }
-.rh-person { font-size: 10px; color: #aaa; }
 
 /* ── Changes summary strip ── */
 .summary-strip { background: #fafaf8; border-bottom: 1px solid #e8e8e5; flex-shrink: 0; overflow: hidden; }
@@ -444,13 +442,14 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .sec-done-btn { font-size:13px; font-weight:500; color:#fff; background:#1a1a1a; border:none; border-radius:5px; padding:6px 18px; cursor:pointer; font-family:inherit; }
 .sec-done-btn:hover { background:#333; }
 /* ── Inline note history (per row + GC) ── */
-.note-hist-wrap { margin-top: 2px; display: none; }
-.note-hist-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: #aaa; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
-.note-hist-toggle:hover { color: #555; }
-.note-hist-chevron { font-size: 9px; transition: transform .15s; }
+.note-hist-wrap { margin-top: 0; display: none; border-bottom: 1px solid #f0f0ee; }
+.note-hist-wrap .note-hist-toggle { display: flex; align-items: center; gap: 5px; padding: 3px 10px 3px 14px; font-size: 10px; color: #aaa; background: none; border: none; cursor: pointer; font-family: inherit; width: 100%; }
+.note-hist-toggle:hover { color: #555; background: #f4f4f2; }
+.note-hist-chevron { font-size: 9px; transition: transform .15s; margin-left: auto; }
 .note-hist-wrap.open .note-hist-chevron { transform: rotate(180deg); }
-.note-hist-body { display: none; margin-top: 4px; border: 1px solid #eee; border-radius: 5px; overflow: hidden; }
+.note-hist-body { display: none; }
 .note-hist-wrap.open .note-hist-body { display: block; }
+/* GC note history uses the same gc-history-wrap pattern */
 .nh-row { display: grid; grid-template-columns: 58px 96px 1fr; gap: 0 6px; font-size: 10.5px; border-bottom: 1px solid #f2f2f0; padding: 4px 8px; align-items: center; }
 .nh-row:last-child { border-bottom: none; }
 .nh-ts { font-size: 10px; font-family: 'Courier New', monospace; color: #bbb; }
@@ -1601,43 +1600,87 @@ function renderRowHistoryToggle(rowId, mapId) {
   const ta = document.getElementById('ta-'+rowId);
   const hasContent = ta && ta.value.trim().length > 0;
   const rounds = (mapExportHistory[mapId] || []).filter(r => r.rows && r.rows[rowId]);
-  if (!hasContent && rounds.length === 0) { cell.innerHTML = ''; return; }
+  const hist = rowNoteHistory[rowId] || [];
+
+  // Nothing to show at all
+  if (!hasContent && rounds.length === 0 && hist.length === 0) { cell.innerHTML = ''; return; }
+
   const flagCount = rounds.filter(r => r.rows[rowId].status === 'mapper' || r.rows[rowId].status === 'guidance').length;
   const allGood = rounds.length > 0 && rounds.every(r => r.rows[rowId].status === 'good' || r.rows[rowId].status === 'none');
   const countClass = allGood ? 'all-good' : flagCount > 0 ? 'has-flags' : '';
-  const isOpen = cell.querySelector('.row-history-wrap.open') !== null;
+  const isRoundsOpen = cell.querySelector('.row-history-wrap.open') !== null;
+  const isHistOpen = cell.querySelector('.note-hist-wrap.open') !== null;
 
-  // Get meta for person names
   const sheet = document.getElementById('sheet-'+mapId);
-  const mapperName   = sheet?.querySelector('.card-meta input:nth-child(1)')?.value
-    || sheet?.querySelector('[id^="maptitle-"]')?.closest('.map-header')?.querySelectorAll('.card-meta input')?.[0]?.value
-    || 'Mapper';
+  const mapperName   = sheet?.querySelectorAll('.card-meta input')?.[0]?.value || 'Mapper';
   const reviewerName = sheet?.querySelectorAll('.card-meta input')?.[1]?.value || 'Reviewer';
 
-  const rowsHtml = rounds.length > 0 ? rounds.map((r,ri) => {
+  // ── Note history widget (unsaved + saved) ──
+  const currentVal = ta ? ta.value.trim() : '';
+  const savedCount = hist.length;
+  const noteHistVisible = currentVal || savedCount > 0;
+
+  const unsavedRow = currentVal ? `<div class="nh-row" style="background:#fffef5;border-bottom:1px solid #f0ead0">
+    <span class="note-author by-${currentMode}" style="font-size:10px;margin:0">${currentMode==='reviewer'?'Reviewer':'Mapper'}</span>
+    <span class="nh-ts" style="color:#c8a000;font-style:italic">unsaved</span>
+    <span class="nh-val">${currentVal.replace(/</g,'&lt;')}</span>
+  </div>` : '';
+
+  const savedRows = [...hist].reverse().map(e => {
+    const byLabel = e.by === 'reviewer' ? 'Reviewer' : 'Mapper';
+    const byClass = e.by === 'reviewer' ? 'by-reviewer' : 'by-mapper';
+    return `<div class="nh-row">
+      <span class="note-author ${byClass}" style="font-size:10px;margin:0">${byLabel}</span>
+      <span class="nh-ts">${e.ts}</span>
+      <span class="nh-val">${e.value.replace(/</g,'&lt;')}</span>
+    </div>`;
+  }).join('');
+
+  const noteHistHtml = noteHistVisible ? `
+    <div class="note-hist-wrap${isHistOpen?' open':''}" id="nh-wrap-${rowId}" style="display:block">
+      <button class="note-hist-toggle" onclick="toggleRowNoteHistory('${rowId}')">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="nh-label">${savedCount ? `Note history (${savedCount} saved)` : 'Note history'}</span>
+        <span class="note-hist-chevron">▼</span>
+      </button>
+      <div class="note-hist-body">${unsavedRow}${savedRows || (!currentVal ? '<div class="nh-empty">No saved notes yet.</div>' : '')}</div>
+    </div>` : '';
+
+  // ── Previous rounds ──
+  const roundsHtml = rounds.length > 0 ? rounds.map((r,ri) => {
     const h = r.rows[rowId];
     const isReviewer = r.exportedBy === 'reviewer';
     const personName = isReviewer ? (reviewerName||'Reviewer') : (mapperName||'Mapper');
-    const dirLabel   = isReviewer ? 'Reviewer comments' : 'Sent for review';
+    const dirLabel   = isReviewer ? 'Reviewer' : 'Sent for review';
     const chipClass  = isReviewer ? 'chip-guidance' : 'chip-mapper';
     return `<div class="rh-item">
       <span class="rh-round">Round ${ri+1}</span>
       <span class="rh-ts">${r.ts||''}</span>
+      <span class="rh-dir-chip ${chipClass}">${dirLabel}</span>
+      <span class="rh-person">by ${personName}</span>
       <span class="rh-note ${h.note?'':'empty'}">${h.note||'No note recorded'}</span>
       <span class="rh-status">${chipHtml(h.status)}</span>
-    </div>
-    <div class="rh-meta"><span class="rh-dir-chip ${chipClass}">${dirLabel}</span><span class="rh-person">by ${personName}</span></div>`;
+    </div>`;
   }).join('') : '';
 
-  cell.innerHTML = `<div class="row-history-wrap${isOpen?' open':''}" id="rhwrap-${rowId}">
-    <div class="row-history-toggle" onclick="toggleRowHistory('${rowId}')">
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#bbb" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="#bbb" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <span class="rht-label">${rounds.length > 0 ? rounds.length + ' previous round' + (rounds.length>1?'s':'') : 'Not yet exported'}</span>
-      ${rounds.length > 0 ? `<span class="rht-count ${countClass}">${rounds.length}</span>` : ''}
-      ${rounds.length > 0 ? `<span class="rht-chevron">▼</span>` : ''}
-    </div>
-    ${rounds.length > 0 ? `<div class="row-history-body">${rowsHtml}</div>` : ''}
-  </div>`;
+  const roundsSection = rounds.length > 0 ? `
+    <div class="row-history-wrap${isRoundsOpen?' open':''}" id="rhwrap-${rowId}">
+      <div class="row-history-toggle" onclick="toggleRowHistory('${rowId}')">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#bbb" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="#bbb" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="rht-label">${rounds.length} previous round${rounds.length>1?'s':''}</span>
+        <span class="rht-count ${countClass}">${rounds.length}</span>
+        <span class="rht-chevron">▼</span>
+      </div>
+      <div class="row-history-body">${roundsHtml}</div>
+    </div>` : (hasContent ? `
+    <div class="row-history-wrap" id="rhwrap-${rowId}">
+      <div class="row-history-toggle" style="cursor:default">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#bbb" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="#bbb" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="rht-label">Not yet exported</span>
+      </div>
+    </div>` : '');
+
+  cell.innerHTML = noteHistHtml + roundsSection;
 }
 
 function updateRowHistoryToggle(rowId) {
@@ -1735,52 +1778,14 @@ function liveUpdateRow(rowId, mapId) {
 }
 
 function renderRowNoteHistory(rowId, fromInput) {
-  const wrap = document.getElementById('nh-wrap-'+rowId);
-  if (!wrap) return;
-  const hist = rowNoteHistory[rowId] || [];
-  const toggle = wrap.querySelector('.note-hist-toggle');
-  const body   = wrap.querySelector('.note-hist-body');
-  if (!toggle || !body) return;
-  const span = toggle.querySelector('.nh-label');
-
-  const ta = document.getElementById('ta-'+rowId);
-  const currentVal = ta ? ta.value.trim() : '';
-  const savedCount = hist.length;
-
-  // Hide entire widget if textarea is empty and no saved history
-  if (!currentVal && !savedCount) {
-    wrap.style.display = 'none';
-    return;
+  // Widget now lives in histcell, rendered by renderRowHistoryToggle
+  const parts = rowId.split('_');
+  renderRowHistoryToggle(rowId, parts[0]);
+  // Auto-expand on first user input
+  if (fromInput) {
+    const wrap = document.getElementById('nh-wrap-'+rowId);
+    if (wrap && !wrap.classList.contains('open')) wrap.classList.add('open');
   }
-  wrap.style.display = 'block';
-
-  // Auto-expand the first time content appears (user starts typing)
-  if (fromInput && !wrap.classList.contains('open')) {
-    wrap.classList.add('open');
-  }
-
-  // Label
-  if (span) span.textContent = savedCount ? `Note history (${savedCount} saved)` : 'Note history';
-
-  // Unsaved row — always shown when textarea has content, always live
-  const unsavedRow = currentVal ? `<div class="nh-row" style="background:#fffef5;border-bottom:1px solid #f0ead0">
-    <span class="note-author by-${currentMode}" style="font-size:10px;margin:0">${currentMode==='reviewer'?'Reviewer':'Mapper'}</span>
-    <span class="nh-ts" style="color:#c8a000;font-style:italic">unsaved</span>
-    <span class="nh-val">${currentVal.replace(/</g,'&lt;')}</span>
-  </div>` : '';
-
-  // Saved entries — newest first, growing list
-  const savedRows = [...hist].reverse().map(e => {
-    const byLabel = e.by === 'reviewer' ? 'Reviewer' : 'Mapper';
-    const byClass = e.by === 'reviewer' ? 'by-reviewer' : 'by-mapper';
-    return `<div class="nh-row">
-      <span class="note-author ${byClass}" style="font-size:10px;margin:0">${byLabel}</span>
-      <span class="nh-ts">${e.ts}</span>
-      <span class="nh-val">${e.value.replace(/</g,'&lt;')}</span>
-    </div>`;
-  }).join('');
-
-  body.innerHTML = unsavedRow + (savedRows || (currentVal ? '' : '<div class="nh-empty">No previously saved notes.</div>'));
 }
 
 function toggleRowNoteHistory(rowId) {
@@ -1890,14 +1895,6 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
               <button class="na-btn${isNA?' active':''}" id="nabtn-${lid}" onclick="toggleNA('${lid}')">${isNA?'Unmark N/A':'N/A'}</button>
               <button class="clear-btn" onclick="clearRow('${lid}')">Clear</button>
             </div>
-            <div class="note-hist-wrap" id="nh-wrap-${lid}">
-              <button class="note-hist-toggle" onclick="toggleRowNoteHistory('${lid}')">
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                <span class="nh-label">Note history</span>
-                <span class="note-hist-chevron">▼</span>
-              </button>
-              <div class="note-hist-body"><div class="nh-empty">No saved notes yet.</div></div>
-            </div>
           </div>
         </td>`;
       tbody.appendChild(tr);
@@ -1972,14 +1969,6 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
             <button class="na-btn${isNA?' active':''}" id="nabtn-${rowId}" onclick="toggleNA('${rowId}')">${isNA?'Unmark N/A':'N/A'}</button>
             <button class="clear-btn" onclick="clearRow('${rowId}')">Clear</button>
             <div class="note-author" id="nauthor-${rowId}"></div>
-          </div>
-          <div class="note-hist-wrap" id="nh-wrap-${rowId}">
-            <button class="note-hist-toggle" onclick="toggleRowNoteHistory('${rowId}')">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <span class="nh-label">Note history</span>
-              <span class="note-hist-chevron">▼</span>
-            </button>
-            <div class="note-hist-body"><div class="nh-empty">No saved notes yet.</div></div>
           </div></div></td>`;
       tbody.appendChild(tr);
 
