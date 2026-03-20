@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Cartography Review Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #f0f0ed; }
+.app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ── Global top bar ── */
+.top-bar {
+  flex-shrink: 0; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 18px;
+  background: #1a1a1a; height: 48px; gap: 16px; z-index: 60;
+}
+.project-area { display: flex; align-items: baseline; gap: 0; min-width: 0; flex: 1; }
+.project-prefix { font-size: 10.5px; color: #777; white-space: nowrap; margin-right: 6px; letter-spacing: 0.03em; }
+.project-input { font-size: 14px; font-weight: 700; color: #fff; background: transparent; border: none; outline: none; border-bottom: 1.5px solid transparent; padding: 2px 0; font-family: inherit; width: 240px; transition: border-color 0.15s; }
+.project-input::placeholder { color: #4a4a4a; font-weight: 400; }
+.project-input:focus { border-bottom-color: #555; }
+.project-suffix { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; margin-left: 4px; }
+.btn-row { display: flex; gap: 7px; flex-shrink: 0; }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 5px; font-size: 11.5px; font-family: inherit; font-weight: 500; cursor: pointer; white-space: nowrap; border: none; }
+.btn-light { background: #fff; color: #1a1a1a; }
+.btn-light:hover { background: #e8e8e8; }
+.btn-ghost { background: transparent; color: #bbb; border: 1px solid #3a3a3a; }
+.btn-ghost:hover { background: #252525; color: #fff; border-color: #666; }
+.btn-green { background: #1a6e3a; color: #fff; border: 1px solid #2a8a4a; }
+.btn-green:hover { background: #1f8044; }
+
+/* ── Content pane ── */
+.content-pane { flex: 1; overflow: hidden; position: relative; background: #f0f0ed; display: flex; flex-direction: column; }
+
+/* ── Map sheet ── */
+.map-sheet { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+.map-sheet.active { display: flex; }
+
+/* ── Frozen map header (per sheet) ── */
+.map-header { flex-shrink: 0; background: #fff; border-bottom: 2px solid #1a1a1a; z-index: 30; }
+.map-header-top { display: flex; align-items: center; gap: 10px; padding: 10px 18px 8px; border-bottom: 1px solid #eee; }
+.map-title-block { flex: 1; min-width: 0; }
+.map-title-label { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #bbb; margin-bottom: 2px; }
+.map-title-input { font-size: 15px; font-weight: 700; color: #1a1a1a; background: transparent; border: none; outline: none; border-bottom: 1.5px solid transparent; width: 100%; font-family: inherit; padding: 1px 0; transition: border-color 0.15s; }
+.map-title-input::placeholder { color: #bbb; font-weight: 400; }
+.map-title-input:focus { border-bottom-color: #1a1a1a; }
+
+/* Per-map attach button */
+.map-attach-btn { display: flex; align-items: center; gap: 6px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 5px 11px; cursor: pointer; color: #666; font-size: 11.5px; font-family: inherit; font-weight: 500; white-space: nowrap; flex-shrink: 0; transition: background 0.12s, border-color 0.12s; }
+.map-attach-btn:hover { background: #eee; border-color: #aaa; color: #1a1a1a; }
+.map-attach-btn.has-file { border-color: #4a90d9; color: #1565c0; background: #e8f0fe; }
+
+/* Meta grid */
+.card-meta { display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 18px 10px; gap: 0; }
+.meta-field { padding-right: 16px; }
+.meta-field:last-child { padding-right: 0; }
+.meta-field label { display: block; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #bbb; margin-bottom: 2px; }
+.meta-field input { border: none; border-bottom: 1px solid #e8e8e8; width: 100%; font-size: 11.5px; padding: 2px 0; color: #1a1a1a; background: transparent; font-family: inherit; outline: none; }
+.meta-field input:focus { border-bottom-color: #1a1a1a; }
+
+/* Progress strip */
+.progress-strip { display: flex; align-items: center; gap: 10px; padding: 5px 18px; background: #fafafa; border-top: 1px solid #eee; }
+.progress-label { font-size: 10.5px; color: #999; white-space: nowrap; }
+.progress-bar-track { flex: 1; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: #1a1a1a; border-radius: 2px; transition: width 0.3s; }
+.progress-pct { font-size: 10.5px; color: #999; white-space: nowrap; min-width: 28px; text-align: right; }
+
+/* General comment block */
+.general-comment-block { padding: 7px 18px 8px; border-top: 1px solid #eee; background: #fafaf8; }
+.gc-label { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: #bbb; margin-bottom: 5px; }
+.gc-textarea { width: 100%; min-height: 40px; border: 1px solid #e0e0e0; border-radius: 5px; padding: 6px 9px; font-size: 11.5px; font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; resize: vertical; background: #fafafa; outline: none; line-height: 1.6; }
+.gc-textarea:focus { border-color: #888; background: #fff; }
+.gc-textarea.has-content { background: #fffef5; border-color: #c8b86a; }
+.gc-history-wrap { margin-top: 5px; }
+.gc-history-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: #aaa; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+.gc-history-toggle:hover { color: #555; }
+.gc-history-chevron { font-size: 9px; transition: transform .15s; }
+.gc-history-wrap.open .gc-history-chevron { transform: rotate(180deg); }
+.gc-history-body { display: none; margin-top: 5px; border: 1px solid #eee; border-radius: 5px; overflow: hidden; }
+.gc-history-wrap.open .gc-history-body { display: block; }
+.gc-hist-row { display: grid; grid-template-columns: 90px 105px 1fr; gap: 0 8px; font-size: 11px; border-bottom: 1px solid #f2f2f0; padding: 5px 10px; align-items: start; }
+.gc-hist-row:last-child { border-bottom: none; }
+.gc-hist-round { font-weight: 600; color: #1a1a1a; font-size: 10.5px; }
+.gc-hist-ts { font-size: 10px; font-family: 'Courier New', monospace; color: #bbb; padding-top: 1px; }
+.gc-hist-note { color: #555; line-height: 1.45; }
+
+/* ── Scrollable sections area ── */
+.sections-scroll { flex: 1; overflow-y: auto; padding: 14px 18px 20px; }
+
+/* ── Section block ── */
+.section-block { margin-bottom: 8px; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0; background: #fff; user-select: none; }
+.section-block.drag-over { outline: 2px dashed #4a90d9; outline-offset: -2px; }
+.section-block[draggable="true"] { cursor: grab; }
+.section-block[draggable="true"]:active { cursor: grabbing; }
+
+/* Section header row */
+.section-header { display: flex; align-items: center; gap: 8px; padding: 9px 12px 9px 10px; background: #1a1a1a; cursor: pointer; user-select: none; transition: background 0.25s; }
+.section-header.all-good { background: #228B22; }
+.section-drag-handle { display: flex; flex-direction: column; gap: 2.5px; width: 14px; flex-shrink: 0; padding: 2px 0; opacity: 0.4; cursor: grab; }
+.section-drag-handle span { display: block; height: 1.5px; background: #fff; border-radius: 1px; }
+.section-header:hover .section-drag-handle { opacity: 0.7; }
+.section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; }
+.section-summary { font-size: 10px; color: rgba(255,255,255,0.4); white-space: nowrap; flex-shrink: 0; }
+.section-spacer { flex: 1; }
+.section-chevron { font-size: 10px; color: rgba(255,255,255,0.35); transition: transform 0.18s; flex-shrink: 0; }
+.section-block.open .section-chevron { transform: rotate(180deg); }
+
+/* Row-level status select */
+.row-status-select {
+  appearance: none; -webkit-appearance: none;
+  border: none; border-radius: 4px; cursor: pointer;
+  font-size: 10px; font-weight: 600; font-family: inherit;
+  padding: 3px 18px 3px 7px; outline: none; width: 100%;
+  background-repeat: no-repeat; background-position: right 5px center;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M0 0l3.5 4L7 0z' fill='%23888'/%3E%3C/svg%3E");
+  transition: background-color 0.15s;
+}
+.row-status-select.rs-none     { background-color: #f0f0f0; color: #999; }
+.row-status-select.rs-mapper   { background-color: #fff3e0; color: #b05800; }
+.row-status-select.rs-guidance { background-color: #e8f0fe; color: #1a56b0; }
+.row-status-select.rs-good     { background-color: #e8f5e9; color: #2e7d32; }
+.row-status-select.rs-na       { background-color: #f0f0f0; color: #bbb; cursor: default; }
+.row-status-select:disabled    { opacity: 1; cursor: default; }
+
+/* Row background tints */
+tbody tr.rs-row-mapper   { background: #fffaf5; }
+tbody tr.rs-row-guidance { background: #f5f8ff; }
+tbody tr.rs-row-good     { background: #f5fbf6; }
+
+/* Status col width */
+col.c-status { width: 110px; }
+
+/* Section body */
+.section-body { display: none; }
+.section-block.open .section-body { display: block; }
+
+table { width: 100%; border-collapse: collapse; border-top: none; table-layout: fixed; background: #fff; }
+col.c-check { width: 32px; }
+col.c-element { width: 18%; }
+col.c-specs { width: 36%; }
+col.c-changes { width: 38%; }
+thead th { background: #f7f7f7; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #999; padding: 5px 10px; text-align: left; border-bottom: 1px solid #eee; }
+thead th:first-child { text-align: center; }
+tbody tr { border-bottom: 1px solid #f0f0f0; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr.na-row { background: #f0f0ee !important; pointer-events: none; }
+tbody tr.na-row td { color: #b8b8b8; }
+tbody tr.na-row .el-name, tbody tr.na-row .el-desc, tbody tr.na-row .el-tag { opacity: 0.5; }
+tbody tr.na-row .na-btn { pointer-events: all; color: #888; border-color: #ccc; opacity: 1; }
+tbody tr.na-row .cb { border-color: #d8d8d8; background: #e8e8e8; cursor: default; }
+tbody tr.na-row .spec-pills { background: #e8e8e8; border-color: #e0e0e0; cursor: default; }
+tbody tr.na-row .changes-textarea { background: #e8e8e8; border-color: #e0e0e0; color: #bbb; }
+td { padding: 7px 10px; vertical-align: top; }
+td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
+
+.cb { width: 15px; height: 15px; border: 1.5px solid #ccc; border-radius: 3px; display: inline-block; cursor: pointer; position: relative; }
+.cb.checked { background: #1a1a1a; border-color: #1a1a1a; }
+.cb.checked::after { content: ''; position: absolute; left: 2px; top: 0; width: 8px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg); }
+
+.el-name { font-weight: 500; font-size: 12px; margin-bottom: 2px; }
+.el-tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 20px; font-weight: 500; vertical-align: middle; margin-left: 4px; }
+.tag-text { background: #e8f0fe; color: #1a56b0; }
+.tag-symbol { background: #fce8d5; color: #a04a00; }
+.tag-layout { background: #e8f5e9; color: #2e7d32; }
+.tag-data { background: #f3e8fd; color: #6a1b9a; }
+.tag-export { background: #e0f7fa; color: #00695c; }
+.el-desc { font-size: 11px; color: #777; line-height: 1.5; margin-top: 1px; }
+
+.spec-selector { position: relative; }
+.spec-pills { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 8px; border: 1px solid #e8e8e8; border-radius: 5px; min-height: 32px; cursor: pointer; background: #fafafa; }
+.spec-pills:hover { border-color: #aaa; background: #fff; }
+.spec-pill { display: inline-flex; align-items: center; gap: 3px; background: #e8edf5; color: #1a3a6b; font-size: 11px; padding: 2px 6px; border-radius: 20px; white-space: nowrap; }
+.spec-pill .remove { font-size: 14px; line-height: 1; cursor: pointer; color: #7090c0; }
+.spec-pill .remove:hover { color: #1a1a1a; }
+.pill-placeholder { font-size: 11px; color: #ccc; align-self: center; }
+.spec-dropdown { display: none; position: fixed; background: #fff; border: 1px solid #ccc; border-radius: 5px; z-index: 800; box-shadow: 0 4px 18px rgba(0,0,0,.15); max-height: 220px; overflow-y: auto; min-width: 200px; }
+.spec-dropdown.open { display: block; }
+.spec-option { padding: 6px 10px; font-size: 11.5px; cursor: pointer; display: flex; align-items: center; gap: 7px; color: #1a1a1a; }
+.spec-option:hover { background: #f0f4ff; }
+.spec-option.selected { color: #1a56b0; font-weight: 500; }
+.opt-check { width: 12px; height: 12px; border: 1.5px solid #ccc; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.spec-option.selected .opt-check { background: #1a56b0; border-color: #1a56b0; }
+.spec-option.selected .opt-check::after { content: ''; display: block; width: 6px; height: 3px; border-left: 1.5px solid #fff; border-bottom: 1.5px solid #fff; transform: rotate(-45deg) translate(0,-1px); }
+.dd-select-all { padding: 5px 10px 4px; font-size: 10.5px; color: #999; border-bottom: 1px solid #eee; cursor: pointer; }
+.dd-select-all:hover { color: #333; }
+
+/* ── Dynamic data layer rows (Symbology) ── */
+.layer-row { background: #fafafa; }
+.layer-row td { padding: 6px 10px; vertical-align: middle; }
+.layer-name-input { border: none; border-bottom: 1.5px solid #e0e0e0; background: transparent; font-size: 12px; font-weight: 500; color: #1a1a1a; font-family: inherit; outline: none; width: 100%; padding: 2px 0; }
+.layer-name-input:focus { border-bottom-color: #1a1a1a; }
+.layer-name-input::placeholder { color: #bbb; font-weight: 400; }
+.add-layer-row td { padding: 6px 10px; background: #f7f7f7; border-top: 1px dashed #e0e0e0; }
+.add-layer-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #888; background: none; border: 1px dashed #ccc; border-radius: 5px; padding: 4px 10px; cursor: pointer; font-family: inherit; }
+.add-layer-btn:hover { color: #1a1a1a; border-color: #888; background: #fff; }
+.remove-layer-btn { font-size: 14px; color: #ccc; background: none; border: none; cursor: pointer; padding: 0 3px; font-family: inherit; line-height: 1; }
+.remove-layer-btn:hover { color: #e05c5c; }
+
+.layer-type-select {
+  font-size: 11px; font-family: inherit; font-weight: 500;
+  border: 1px solid transparent; border-radius: 20px;
+  padding: 2px 20px 2px 8px; cursor: pointer; outline: none;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+  transition: background-color 0.12s;
+}
+.layer-type-select.ltype-point   { background-color: #fce8d5; color: #a04a00; border-color: #f0b070; }
+.layer-type-select.ltype-line    { background-color: #e8f0fe; color: #1a56b0; border-color: #90b8f0; }
+.layer-type-select.ltype-polygon { background-color: #e8f5e9; color: #2e7d32; border-color: #80c880; }
+.layer-type-select.ltype-raster  { background-color: #f3e8fd; color: #6a1b9a; border-color: #c090e0; }
+
+.changes-cell { display: flex; flex-direction: column; gap: 4px; }
+.changes-textarea { width: 100%; min-height: 50px; border: 1px solid #e8e8e8; border-radius: 5px; padding: 5px 7px; font-size: 11px; font-family: 'Courier New', monospace; color: #1a1a1a; resize: vertical; background: #fafafa; outline: none; line-height: 1.65; }
+.changes-textarea:focus { border-color: #888; background: #fff; }
+.changes-textarea.has-content { background: #fffef5; border-color: #c8b86a; }
+.row-actions { display: flex; gap: 7px; align-items: center; }
+.na-btn { font-size: 10px; color: #bbb; background: none; border: 1px solid #eee; border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; }
+.na-btn:hover { border-color: #aaa; color: #555; }
+.na-btn.active { background: #f5f5f5; color: #888; border-color: #ccc; }
+.clear-btn { font-size: 10px; color: #ddd; background: none; border: none; cursor: pointer; font-family: inherit; }
+.clear-btn:hover { color: #888; }
+
+/* ── Per-row history ── */
+.row-history-cell { padding: 0 !important; border-bottom: 1px solid #f0f0f0; }
+.row-history-wrap {}
+.row-history-toggle { display: flex; align-items: center; gap: 5px; padding: 3px 10px 3px 14px; cursor: pointer; user-select: none; background: #fafaf8; border-top: 1px solid #f0f0ee; }
+.row-history-toggle:hover { background: #f4f4f2; }
+.rht-label { font-size: 10px; color: #aaa; }
+.rht-count { font-size: 9.5px; font-weight: 600; padding: 1px 5px; border-radius: 8px; color: #fff; background: #bbb; }
+.rht-count.has-flags { background: #b05800; }
+.rht-count.all-good { background: #2e7d32; }
+.rht-chevron { font-size: 9px; color: #ccc; margin-left: auto; transition: transform 0.15s; }
+.row-history-wrap.open .rht-chevron { transform: rotate(180deg); }
+.row-history-body { display: none; background: #fafaf8; border-top: 1px solid #f0f0ee; }
+.row-history-wrap.open .row-history-body { display: block; }
+.rh-item { display: grid; grid-template-columns: 70px 120px 1fr 90px; gap: 0 10px; padding: 5px 14px; border-bottom: 1px solid #f2f2f0; font-size: 11px; align-items: start; }
+.rh-item:last-child { border-bottom: none; }
+.rh-round { font-weight: 600; color: #555; font-size: 10.5px; }
+.rh-ts { font-size: 10px; color: #bbb; font-family: 'Courier New', monospace; }
+.rh-note { color: #444; line-height: 1.45; }
+.rh-note.empty { color: #ccc; font-style: italic; }
+.rh-status {}
+.rh-meta { display: flex; align-items: center; gap: 6px; padding: 2px 14px 5px; border-bottom: 1px solid #f2f2f0; }
+.rh-meta:last-child { border-bottom: none; }
+.rh-dir-chip { font-size: 9.5px; font-weight: 600; padding: 1px 7px; border-radius: 8px; }
+.rh-dir-chip.chip-mapper   { background: #fff3e8; color: #b05800; border: 1px solid #e0a060; }
+.rh-dir-chip.chip-guidance { background: #e8f0fe; color: #1a56b0; border: 1px solid #90b8f0; }
+.rh-person { font-size: 10px; color: #aaa; }
+
+/* ── Changes summary strip ── */
+.summary-strip { background: #fafaf8; border-bottom: 1px solid #e8e8e5; flex-shrink: 0; overflow: hidden; }
+.summary-header { display: flex; align-items: center; gap: 8px; padding: 5px 18px; cursor: pointer; user-select: none; }
+.summary-header-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #aaa; }
+.summary-count { font-size: 10px; color: #fff; background: #888; border-radius: 10px; padding: 1px 6px; font-weight: 600; min-width: 18px; text-align: center; }
+.summary-count.has-items { background: #b05800; }
+.summary-chevron { font-size: 9px; color: #bbb; transition: transform 0.15s; margin-left: auto; }
+.summary-strip.open .summary-chevron { transform: rotate(180deg); }
+.summary-body { display: none; padding: 0 18px 8px; }
+.summary-strip.open .summary-body { display: block; }
+.summary-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.summary-table td { padding: 3px 8px 3px 0; vertical-align: top; color: #555; }
+.summary-table td:first-child { width: 20%; font-weight: 500; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+.summary-table td:nth-child(2) { width: 12%; white-space: nowrap; }
+.summary-table td:last-child { color: #666; font-family: 'Courier New', monospace; font-size: 10.5px; padding-right: 0; }
+.summary-table tr { border-bottom: 1px solid #f0f0f0; }
+.summary-table tr:last-child { border-bottom: none; }
+.sst-mapper   { color: #b05800; font-weight: 600; }
+.sst-guidance { color: #1a56b0; font-weight: 600; }
+.sst-good     { color: #2e7d32; font-weight: 600; }
+.summary-empty { font-size: 11px; color: #bbb; padding: 4px 0 2px; font-style: italic; }
+.rectify-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 500; font-family: inherit;
+  background: none; border: 1px solid #ddd; border-radius: 4px;
+  padding: 2px 7px; cursor: pointer; color: #aaa; white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.rectify-btn:hover { background: #eaf5ea; color: #2e7d32; border-color: #80c880; }
+.rectify-btn.done { background: #eaf5ea; color: #2e7d32; border-color: #80c880; font-weight: 600; }
+
+/* ── Status chips (for row history) ── */
+.status-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.chip-mapper   { background: #fff3e8; color: #b05800; border: 1px solid #e0a060; }
+.chip-guidance { background: #e8f0fe; color: #1a56b0; border: 1px solid #90b8f0; }
+.chip-good     { background: #e8f5e9; color: #2e7d32; border: 1px solid #80c880; }
+.chip-none     { background: #f0f0f0; color: #aaa; border: 1px solid #ddd; }
+.chip-na       { background: #f0f0f0; color: #bbb; border: 1px solid #e0e0e0; }
+
+/* Attach panel */
+.attach-panel { display: none; position: fixed; background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 10px; box-shadow: 0 10px 44px rgba(0,0,0,.55); z-index: 500; overflow: hidden; flex-direction: column; resize: both; }
+.attach-panel.panel-floating { width: 580px; height: 440px; top: 58px; right: 18px; }
+.attach-panel.panel-fullscreen { position: fixed; inset: 0; width: 100% !important; height: 100% !important; border-radius: 0; border: none; resize: none; }
+.attach-panel.visible { display: flex; }
+.panel-toolbar { display: flex; align-items: center; gap: 7px; padding: 7px 11px; background: #222; border-bottom: 1px solid #2e2e2e; flex-shrink: 0; }
+.panel-filename { flex: 1; font-size: 11.5px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-tool-btn { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: none; border: 1px solid #333; border-radius: 5px; cursor: pointer; color: #888; font-family: inherit; flex-shrink: 0; }
+.panel-tool-btn:hover { background: #2e2e2e; color: #fff; border-color: #555; }
+.panel-tool-btn.active { background: #1a2e44; color: #7bbfff; border-color: #3a6090; }
+.panel-body { flex: 1; overflow: hidden; position: relative; background: #111; }
+.panel-body iframe, .panel-body img { width: 100%; height: 100%; border: none; display: block; }
+.panel-body img { object-fit: contain; }
+.panel-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; }
+.panel-upload-btn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 16px; background: #1e2e3e; border: 1px solid #3a5a7a; border-radius: 6px; color: #7bbfff; font-size: 12px; font-family: inherit; font-weight: 500; cursor: pointer; }
+.panel-upload-btn:hover { background: #253a4e; }
+.panel-body.drag-over { outline: 2px dashed #4a90d9; outline-offset: -4px; }
+#file-input { display: none; }
+
+/* ── Sheet tab bar ── */
+.tab-bar-wrap { flex-shrink: 0; display: flex; align-items: flex-end; background: #e4e4e0; border-top: 1px solid #ccc; padding: 0 8px; overflow-x: auto; scrollbar-width: thin; min-height: 34px; }
+.egg-dismiss { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-bottom: 8px; margin-right: 4px; font-size: 11px; line-height: 1; color: #b8b6b0; background: none; border: none; cursor: pointer; font-family: inherit; flex-shrink: 0; border-radius: 3px; }
+.egg-dismiss:hover { color: #888; }
+.egg-text { display: none; font-size: 9.5px; color: #c8c6c0; font-family: 'Segoe UI', Arial, sans-serif; letter-spacing: 0.02em; white-space: nowrap; align-self: center; margin-bottom: 1px; margin-right: 8px; user-select: none; }
+.egg-text.visible { display: inline; }
+.tab-bar-wrap::-webkit-scrollbar { height: 4px; }
+.tab-bar-wrap::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+.sheet-tab { display: inline-flex; align-items: center; gap: 5px; padding: 0 11px; height: 30px; font-size: 12px; font-family: inherit; font-weight: 400; color: #666; background: #d4d4d0; border: 1px solid #bbb; border-bottom: none; border-radius: 4px 4px 0 0; cursor: pointer; white-space: nowrap; position: relative; bottom: -1px; margin-right: 2px; flex-shrink: 0; user-select: none; max-width: 180px; }
+.sheet-tab:hover { background: #e0e0dc; }
+.sheet-tab.active { background: #fff; border-color: #ccc; color: #1a1a1a; font-weight: 500; border-bottom: 1px solid #fff; z-index: 2; }
+.tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; pointer-events: none; }
+.tab-name-input { border: none; outline: none; background: transparent; font-size: 12px; font-family: inherit; font-weight: 500; color: #1a1a1a; width: 100px; padding: 0; cursor: text; }
+.tab-close { font-size: 14px; line-height: 1; color: #aaa; background: none; border: none; cursor: pointer; padding: 0 1px; flex-shrink: 0; font-family: inherit; }
+.tab-close:hover { color: #e05c5c; }
+.tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+.tab-add-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-bottom: 2px; font-size: 18px; color: #888; background: none; border: none; cursor: pointer; border-radius: 4px; font-family: inherit; }
+.tab-add-btn:hover { background: #d0d0cc; color: #1a1a1a; }
+
+/* ── Mode toggle ── */
+.mode-toggle { display: inline-flex; border: 1px solid #3a3a3a; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.mode-btn { padding: 4px 12px; font-size: 11px; font-family: inherit; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #777; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+.mode-btn.active-mapper   { background: #c8762a; color: #fff; }
+.mode-btn.active-reviewer { background: #1a56b0; color: #fff; }
+.mode-btn:not([class*="active"]):hover { background: #2a2a2a; color: #ccc; }
+/* Top-bar mode badge (visible when mode is set) */
+.mode-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 4px; letter-spacing: 0.02em; }
+.mode-badge.mapper-badge   { background: rgba(200,118,42,0.18); color: #e8942a; border: 1px solid rgba(200,118,42,0.35); }
+.mode-badge.reviewer-badge { background: rgba(26,86,176,0.18);  color: #5b8edf; border: 1px solid rgba(26,86,176,0.35); }
+
+/* ── Note author label ── */
+.note-author { font-size: 9.5px; color: #bbb; margin-top: 2px; font-style: italic; min-height: 14px; transition: color 0.2s; }
+.note-author.by-mapper   { color: #c8762a; }
+.note-author.by-reviewer { color: #1a56b0; }
+
+/* ── Confirm overlay ── */
+.confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; align-items: center; justify-content: center; }
+.confirm-overlay.visible { display: flex; }
+.confirm-box { background: #fff; border-radius: 10px; padding: 22px 26px; width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+.confirm-box h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.confirm-box p { font-size: 12px; color: #555; line-height: 1.5; margin-bottom: 18px; }
+.confirm-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.confirm-btn { padding: 5px 14px; border-radius: 5px; font-size: 12px; font-family: inherit; font-weight: 500; cursor: pointer; border: none; }
+.confirm-cancel { background: #f0f0f0; color: #444; border: 1px solid #ddd; }
+.confirm-cancel:hover { background: #e8e8e8; }
+.confirm-delete { background: #d94040; color: #fff; }
+.confirm-delete:hover { background: #b83232; }
+
+/* ── Print ── */
+@media print {
+  .top-bar .btn-row, .tab-bar-wrap, .attach-panel, .map-attach-btn, .row-actions, .dd-select-all, .remove, .section-drag-handle, .section-chevron { display: none !important; }
+  body, html { height: auto; overflow: visible; }
+  .app, .content-pane { height: auto; overflow: visible; }
+  .map-sheet { display: flex !important; flex-direction: column; page-break-after: always; }
+  .map-sheet:last-child { page-break-after: auto; }
+  .sections-scroll { overflow: visible; padding: 0; }
+  .section-body { display: block !important; }
+  .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #f7f7f7 !important; }
+  .spec-dropdown { display: none !important; }
+  table { page-break-inside: avoid; }
+  .section-block { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Global top bar -->
+  <div class="top-bar">
+    <div class="project-area">
+      <span class="project-prefix">Project</span>
+      <input class="project-input" id="project-name" placeholder="Enter project name or code" oninput="updateTitle()" spellcheck="false">
+      <span class="project-suffix">— Map Review</span>
+    </div>
+    <div class="btn-row">
+      <!-- Mode toggle -->
+      <div class="mode-toggle" title="Who is currently filling out this form?">
+        <button class="mode-btn" id="mode-btn-mapper"   onclick="setMode('mapper')">Mapper</button>
+        <button class="mode-btn" id="mode-btn-reviewer" onclick="setMode('reviewer')">Reviewer</button>
+      </div>
+      <span class="mode-badge" id="mode-badge" style="display:none"></span>
+      <button class="btn btn-ghost" onclick="saveHTML()">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2h9l3 3v9a1 1 0 01-1 1H2a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="8" height="5" rx=".5" stroke="currentColor" stroke-width="1.3"/><rect x="5" y="2" width="5" height="4" rx=".5" stroke="currentColor" stroke-width="1.3"/></svg>
+        Save HTML
+      </button>
+      <button class="btn btn-green" onclick="saveExcel()">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="1.5" stroke="white" stroke-width="1.4"/><line x1="5.5" y1="2" x2="5.5" y2="14" stroke="white" stroke-width="1.2"/><line x1="10.5" y1="2" x2="10.5" y2="14" stroke="white" stroke-width="1.2"/><line x1="1" y1="6.5" x2="15" y2="6.5" stroke="white" stroke-width="1.2"/><line x1="1" y1="10.5" x2="15" y2="10.5" stroke="white" stroke-width="1.2"/></svg>
+        Save Excel
+      </button>
+      <button class="btn btn-light" onclick="window.print()">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="3" y="1" width="10" height="7" rx="1" stroke="#1a1a1a" stroke-width="1.5"/><rect x="1" y="6" width="14" height="7" rx="1" stroke="#1a1a1a" stroke-width="1.5"/><rect x="4" y="10" width="8" height="5" rx=".5" stroke="#1a1a1a" stroke-width="1.5"/></svg>
+        Save PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Content pane -->
+  <div class="content-pane" id="content-pane"></div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar-wrap" id="tab-bar">
+    <button class="egg-dismiss" id="egg-dismiss" onclick="revealEgg()" title="×">×</button>
+    <span class="egg-text" id="egg-text">Open source — github.com/yangchh</span>
+    <button class="tab-add-btn" onclick="addMap()" title="Add map">+</button>
+  </div>
+</div>
+
+<!-- Attachment panel -->
+<div class="attach-panel panel-floating" id="attach-panel">
+  <div class="panel-toolbar">
+    <span class="panel-filename" id="panel-filename">No file attached</span>
+    <button class="panel-tool-btn" id="fs-btn" onclick="toggleFullscreen()" title="Full screen">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 2h4M2 2v4M14 2h-4M14 2v4M2 14h4M2 14v-4M14 14h-4M14 14v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <button class="panel-tool-btn" onclick="document.getElementById('file-input').click()" title="Replace file">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M5 4l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12v2h12v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <button class="panel-tool-btn" id="remove-file-btn" onclick="removeFileForMap()" title="Remove file" style="display:none">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <button class="panel-tool-btn" onclick="closePanel()" title="Minimise">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="panel-body" id="panel-body">
+    <div class="panel-empty" id="panel-empty">
+      <svg width="44" height="44" viewBox="0 0 48 48" fill="none"><rect x="8" y="4" width="24" height="32" rx="3" stroke="#444" stroke-width="2"/><path d="M32 4l8 8v28a3 3 0 01-3 3H11" stroke="#444" stroke-width="2"/><line x1="14" y1="16" x2="26" y2="16" stroke="#444" stroke-width="1.5" stroke-linecap="round"/><line x1="14" y1="21" x2="26" y2="21" stroke="#444" stroke-width="1.5" stroke-linecap="round"/><line x1="14" y1="26" x2="20" y2="26" stroke="#444" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <p style="color:#555;font-size:12px;text-align:center;line-height:1.6">Attach a map for this review.<br>Supports PDF and images (PNG, JPG, etc.)</p>
+      <button class="panel-upload-btn" onclick="document.getElementById('file-input').click()">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M5 4l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12v2h12v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Choose file
+      </button>
+    </div>
+  </div>
+  <input type="file" id="file-input" accept=".pdf,image/*" onchange="handleFileUpload(event)">
+</div>
+
+<!-- Confirm overlay -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Remove map?</h3>
+    <p id="confirm-msg">This will permanently delete this checklist.</p>
+    <div class="confirm-btns">
+      <button class="confirm-btn confirm-cancel" onclick="dismissConfirm()">Cancel</button>
+      <button class="confirm-btn confirm-delete" id="confirm-ok">Remove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────
+const SECTIONS_DEF = [
+  { title: "Text & Labels", rows: [
+    { name: "Map title", tag: "text", desc: "Largest text on layout. States subject, area, and time period.", specs: ["Font family","Font size (pt)","Font weight","Font colour (hex)","Letter case","Alignment","Placement on layout","Title content"] },
+    { name: "Subtitle / description", tag: "text", desc: "Secondary line below title. Smaller and lighter.", specs: ["Font family","Font size (pt)","Font weight","Font colour (hex)","Placement on layout"] },
+    { name: "Feature labels & annotations", tag: "text", desc: "Labels on or near features (place names, road labels, region names) and callout annotations with leader lines.", specs: ["Font family","Font size (pt)","Font style (e.g. italic for water)","Font colour (hex)","Halo colour (hex)","Halo size (pt)","Leader line colour (hex)","Leader line weight (pt)","Min display scale"] },
+    { name: "Disclaimer", tag: "text", desc: "Disclaimer text for data limitations, confidentiality, or boundary notices.", specs: ["Present (Yes/No)","Font size (pt)","Font colour (hex)","Text length appropriate","Position on layout"] }
+  ]},
+  { title: "Legend", rows: [
+    { name: "Legend text", tag: "text", desc: "Label text for all legend entries — must be descriptive, not raw field names.", specs: ["Font family","Font size (pt)","Font weight","Font colour (hex)","Line spacing","Letter case"] },
+    { name: "Legend symbology", tag: "symbol", desc: "The visual symbols (polygon patches, polyline strokes, point markers) shown alongside legend text — must exactly match what appears on the map.", specs: ["Point marker shape","Point marker size (pt)","Line stroke width (pt)","Line style (solid/dashed)","Polygon fill colour (hex)","Polygon outline colour (hex)","Polygon outline width (pt)","Transparency / opacity (%)"] },
+    { name: "Legend layout", tag: "layout", desc: "Overall positioning, sizing, and framing of the legend box on the layout.", specs: ["Position on layout","Background colour / transparency","Border style","Item spacing","Number of columns","Legend box size"] }
+  ]},
+  { title: "Base layer", rows: [
+    { name: "ESRI base layer", tag: "symbol", desc: "Esri basemap services (Light Gray, Imagery, Topographic, Streets, etc.) used as the cartographic background.", specs: ["Basemap name / service","Opacity (%)","Visibility at export scale","Contrast / saturation","Does not overpower thematic data"] },
+    { name: "Terrain base layer", tag: "symbol", desc: "Elevation-derived layers such as DSM, DEM, hillshade, or slope rasters.", specs: ["Layer name / source","DEM / DSM resolution (m)","Rendering style (hillshade / colour ramp)","Opacity (%)","Blending mode"] },
+    { name: "Administrative boundaries", tag: "symbol", desc: "Territory, reserve, regional, or municipal boundary lines overlaid on the map.", specs: ["Boundary type (territory / reserve / region / other)","Line colour (hex)","Line width (pt)","Line style (solid/dashed)","Label visibility","Label font size (pt)"] },
+    { name: "Other base layers", tag: "symbol", desc: "Supporting contextual layers such as roads, buildings, cadastre, waterways, etc.", specs: ["Layer name / type","Line / fill colour (hex)","Line width (pt)","Opacity (%)","Visible at export scale","Draw order relative to thematic data"] }
+  ]},
+  { title: "Symbology — data layers", rows: [], isDynamic: true },
+  { title: "Scale & North Arrow", rows: [
+    { name: "Scale bar", tag: "layout", desc: "Present, correctly placed, sensible round-number intervals, units labelled.", specs: ["Scale bar style","Units (km/mi/m)","Label font size (pt)","Label colour (hex)","Bar fill colour (hex)","Bar height (pt)","Placement"] },
+    { name: "North arrow", tag: "layout", desc: "Present unless orientation is unambiguous.", specs: ["Arrow style","Size (mm)","Fill colour (hex)","Placement","Rotation (if tilted map)"] },
+    { name: "Zoom level / scale", tag: "layout", desc: "The map scale or web map zoom level is appropriate for the intended output and audience.", specs: ["Map scale (e.g. 1:10,000)","Web map zoom level","Appropriate for purpose (Yes/No)","Scale noted on layout (Yes/No)"] }
+  ]},
+  { title: "Layout & composition", rows: [
+    { name: "Page setup & margins", tag: "layout", desc: "Page size, orientation, and margins documented. Nothing clipped at the edge.", specs: ["Page size","Page orientation (landscape / portrait)","Top margin (mm)","Bottom margin (mm)","Left margin (mm)","Right margin (mm)"] },
+    { name: "Visual hierarchy", tag: "layout", desc: "Map is dominant element. Title, legend, scale bar, and peripherals are visually subordinate.", specs: ["Map dominance check","Title prominence check","Legend size appropriate","No element competes with data"] },
+    { name: "Inset map (if present)", tag: "layout", desc: "Shows main map extent in broader context. Has own scale bar and north arrow.", specs: ["Inset extent / coverage area","Border colour (hex)","Border weight (pt)","Has own scale bar (Yes/No)","Has own north arrow (Yes/No)","Background colour (hex)"] }
+  ]},
+  { title: "Export quality", rows: [
+    { name: "Resolution", tag: "export", desc: "DPI/PPI appropriate for the intended output. 300 DPI minimum for print, 96 DPI for screen.", specs: ["DPI / PPI","Colour mode (CMYK / RGB)","File size acceptable","Raster layer resolution check"] },
+    { name: "Export format", tag: "export", desc: "Output file format suits the use case and delivery method.", specs: ["PDF (print-ready)","PNG (screen / web)","JPEG (photo-heavy / web)","Web map (tile service / hosted layer)","Format noted in file name"] }
+  ]}
+];
+
+const TAG_CLASS = { text:'tag-text', symbol:'tag-symbol', layout:'tag-layout', data:'tag-data', export:'tag-export' };
+const TAG_LABEL = { text:'Text', symbol:'Symbol', layout:'Layout', data:'Data', export:'Export' };
+
+let mapCounter = 0, activeMapId = null;
+const rowState = {}, mapMeta = {}, mapAttach = {}, mapSectionOrder = {};
+// Export history per map: [{round, ts, rows:{[rowId]:{status,note}}, generalComment, exportedBy}]
+const mapExportHistory = {};
+
+// ── Mode (Mapper / Reviewer) ──────────────────────────────────
+let currentMode = 'mapper'; // 'mapper' | 'reviewer'
+function setMode(mode) {
+  currentMode = mode;
+  const mb = document.getElementById('mode-btn-mapper');
+  const rb = document.getElementById('mode-btn-reviewer');
+  const badge = document.getElementById('mode-badge');
+  mb.className = 'mode-btn' + (mode === 'mapper'   ? ' active-mapper'   : '');
+  rb.className = 'mode-btn' + (mode === 'reviewer' ? ' active-reviewer' : '');
+  badge.style.display = '';
+  badge.textContent = mode === 'mapper' ? '✏ Mapper mode' : '🔍 Reviewer mode';
+  badge.className = 'mode-badge ' + (mode === 'mapper' ? 'mapper-badge' : 'reviewer-badge');
+}
+function getModeTs() {
+  const now = new Date();
+  return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')
+    +' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+}
+// Call on load to initialise button states
+function applyModeFromState(mode) { if (mode === 'mapper' || mode === 'reviewer') setMode(mode); }
+
+// ── Project title ─────────────────────────────────────────────
+function updateTitle() {
+  const v = document.getElementById('project-name').value.trim();
+  document.title = v ? v + ' — Map Review' : 'Map Review';
+}
+
+// ── Easter egg ────────────────────────────────────────────────
+function revealEgg() {
+  document.getElementById('egg-dismiss').style.display = 'none';
+  document.getElementById('egg-text').classList.add('visible');
+}
+
+// ── Attachment (per map) ──────────────────────────────────────
+let panelOpen = false, panelFS = false, panelMapId = null;
+
+function toggleAttachPanel(mapId) {
+  if (panelOpen && panelMapId === mapId) { closePanel(); return; }
+  panelMapId = mapId;
+  renderPanelForMap(mapId);
+  openPanel();
+}
+function openPanel() { panelOpen = true; document.getElementById('attach-panel').classList.add('visible'); }
+function closePanel() { panelOpen = false; document.getElementById('attach-panel').classList.remove('visible'); if (panelFS) exitFullscreen(); }
+function toggleFullscreen() { panelFS ? exitFullscreen() : enterFullscreen(); }
+function enterFullscreen() {
+  panelFS = true;
+  const p = document.getElementById('attach-panel');
+  p.classList.remove('panel-floating'); p.classList.add('panel-fullscreen');
+  document.getElementById('fs-btn').classList.add('active');
+}
+function exitFullscreen() {
+  panelFS = false;
+  const p = document.getElementById('attach-panel');
+  p.classList.remove('panel-fullscreen'); p.classList.add('panel-floating');
+  document.getElementById('fs-btn').classList.remove('active');
+}
+function renderPanelForMap(mapId) {
+  const body = document.getElementById('panel-body');
+  const empty = document.getElementById('panel-empty');
+  const fname = document.getElementById('panel-filename');
+  const removeBtn = document.getElementById('remove-file-btn');
+  body.querySelectorAll('iframe, img').forEach(e => { if (e.dataset?.blobUrl) URL.revokeObjectURL(e.dataset.blobUrl); e.remove(); });
+  const f = mapAttach[mapId];
+  if (f) {
+    if (empty) empty.style.display = 'none';
+    fname.textContent = f.name;
+    removeBtn.style.display = '';
+    if (f.type === 'application/pdf') {
+      const base64 = f.dataUrl.split(',')[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      const iframe = document.createElement('iframe');
+      iframe.src = blobUrl; iframe.title = f.name; iframe.dataset.blobUrl = blobUrl;
+      body.appendChild(iframe);
+    } else {
+      const img = document.createElement('img');
+      img.src = f.dataUrl; img.alt = f.name;
+      body.appendChild(img);
+    }
+  } else {
+    if (empty) empty.style.display = '';
+    fname.textContent = 'No file attached';
+    removeBtn.style.display = 'none';
+  }
+}
+function handleFileUpload(e) {
+  const file = e.target.files[0]; if (!file || !panelMapId) return;
+  const reader = new FileReader();
+  reader.onload = ev => { mapAttach[panelMapId] = { name: file.name, type: file.type, dataUrl: ev.target.result }; renderPanelForMap(panelMapId); updateAttachBtn(panelMapId); };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+function removeFileForMap() { if (!panelMapId) return; delete mapAttach[panelMapId]; renderPanelForMap(panelMapId); updateAttachBtn(panelMapId); }
+function updateAttachBtn(mapId) {
+  const btn = document.getElementById('attachbtn-'+mapId); if (!btn) return;
+  const hasFile = !!mapAttach[mapId];
+  btn.classList.toggle('has-file', hasFile);
+  btn.querySelector('.attach-btn-label').textContent = hasFile ? mapAttach[mapId].name.substring(0,20) + (mapAttach[mapId].name.length>20?'…':'') : 'Attach map';
+}
+const panelBody = document.getElementById('panel-body');
+panelBody.addEventListener('dragover', e => { e.preventDefault(); panelBody.classList.add('drag-over'); });
+panelBody.addEventListener('dragleave', () => panelBody.classList.remove('drag-over'));
+panelBody.addEventListener('drop', e => {
+  e.preventDefault(); panelBody.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0]; if (!file || !panelMapId) return;
+  const reader = new FileReader();
+  reader.onload = ev => { mapAttach[panelMapId] = { name: file.name, type: file.type, dataUrl: ev.target.result }; renderPanelForMap(panelMapId); updateAttachBtn(panelMapId); };
+  reader.readAsDataURL(file);
+});
+
+// ── Row status ────────────────────────────────────────────────
+function setRowStatus(rowId, mapId, si, sel) {
+  if (rowState[rowId]?.na) return; // N/A rows are locked
+  const val = sel.value;
+  if (rowState[rowId]) rowState[rowId].rowStatus = val;
+  sel.className = 'row-status-select rs-' + val;
+  const tr = document.getElementById('row-'+rowId);
+  if (tr) {
+    tr.classList.remove('rs-row-mapper','rs-row-guidance','rs-row-good');
+    if (val !== 'none') tr.classList.add('rs-row-'+val);
+  }
+  checkSectionAllGood(mapId, si);
+  const strip = document.getElementById('summary-' + mapId);
+  if (strip) { if (strip.classList.contains('open')) refreshSummary(mapId); else updateSummaryCount(mapId); }
+}
+
+function checkSectionAllGood(mapId, si) {
+  const block = document.getElementById(`secblock-${mapId}-${si}`);
+  const hdr = document.getElementById(`hdr-${mapId}-${si}`);
+  if (!block || !hdr) return;
+  const allSelects = Array.from(block.querySelectorAll('.row-status-select'));
+  const active = allSelects.filter(sel => {
+    const tr = sel.closest('tr');
+    return tr && !tr.classList.contains('na-row');
+  });
+  const allGood = active.length > 0 && active.every(sel => sel.value === 'good');
+  hdr.classList.toggle('all-good', allGood);
+}
+
+// ── Section drag-to-reorder ───────────────────────────────────
+let dragSrcEl = null, dragMapId = null;
+function onSecDragStart(e, mapId, secEl) { dragSrcEl = secEl; dragMapId = mapId; e.dataTransfer.effectAllowed = 'move'; setTimeout(() => secEl.style.opacity = '0.4', 0); }
+function onSecDragOver(e, secEl) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (secEl !== dragSrcEl) secEl.classList.add('drag-over'); }
+function onSecDragLeave(secEl) { secEl.classList.remove('drag-over'); }
+function onSecDrop(e, mapId, secEl) {
+  e.preventDefault(); secEl.classList.remove('drag-over');
+  if (!dragSrcEl || dragSrcEl === secEl || dragMapId !== mapId) return;
+  const container = secEl.parentNode;
+  const allSecs = Array.from(container.querySelectorAll('.section-block'));
+  const fromIdx = allSecs.indexOf(dragSrcEl), toIdx = allSecs.indexOf(secEl);
+  if (fromIdx < toIdx) container.insertBefore(dragSrcEl, secEl.nextSibling);
+  else container.insertBefore(dragSrcEl, secEl);
+}
+function onSecDragEnd(secEl) { secEl.style.opacity = ''; dragSrcEl = null; dragMapId = null; document.querySelectorAll('.section-block').forEach(s => s.classList.remove('drag-over')); }
+
+// ── Toggle section open/close ─────────────────────────────────
+function toggleSection(blockEl) {
+  blockEl.classList.toggle('open');
+  const mapId = blockEl.getAttribute('data-map');
+  const si = parseInt(blockEl.getAttribute('data-si'));
+  updateSectionSummary(mapId, si, blockEl);
+}
+
+function updateSectionSummary(mapId, si, blockEl) {
+  const hdr = blockEl.querySelector('.section-header');
+  const summary = hdr ? hdr.querySelector('.section-summary') : null;
+  if (!summary) return;
+  const secRows = Object.keys(rowState).filter(k => k.startsWith(mapId+'_'+si+'_') && !rowState[k].na);
+  const done = secRows.filter(k => { const cb = document.getElementById('cb-'+k); return cb?.classList.contains('checked'); }).length;
+  summary.textContent = `${done}/${secRows.length}`;
+}
+
+// ── Row logic ─────────────────────────────────────────────────
+function buildMergedText(rowId, cur) {
+  const sel = rowState[rowId]?.selected || []; if (!sel.length) return '';
+  const lines = cur.split('\n');
+  return sel.map(spec => {
+    const idx = lines.findIndex(l => l.trim() === spec+':');
+    if (idx !== -1) { let b=spec+':\n', i=idx+1; while(i<lines.length&&(lines[i].startsWith('  ')||lines[i]===''))b+=lines[i++]+'\n'; return b.trimEnd(); }
+    return `${spec}:\n  Current: \n  Required: `;
+  }).join('\n\n');
+}
+function renderPills(rowId) {
+  const div = document.querySelector(`#sel-${rowId} .spec-pills`); if (!div) return;
+  const sel = rowState[rowId]?.selected || [];
+  div.innerHTML = '';
+  if (!sel.length) { div.innerHTML='<span class="pill-placeholder">Select specs to review...</span>'; return; }
+  sel.forEach(spec => {
+    const pill = document.createElement('span'); pill.className='spec-pill';
+    const s = spec.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    pill.innerHTML=`${spec}<span class="remove" onclick="event.stopPropagation();removeSpec('${rowId}','${s}')">×</span>`;
+    div.appendChild(pill);
+  });
+}
+function syncTextarea(rowId) {
+  const ta = document.getElementById('ta-'+rowId); if (!ta) return;
+  ta.value = buildMergedText(rowId, ta.value);
+  ta.classList.toggle('has-content', ta.value.trim().length > 0);
+}
+function removeSpec(rowId, spec) {
+  if (!rowState[rowId]) return;
+  rowState[rowId].selected = rowState[rowId].selected.filter(s=>s!==spec);
+  document.querySelector(`#dd-${rowId} .spec-option[data-val="${CSS.escape(spec)}"]`)?.classList.remove('selected');
+  updateSALabel(rowId); renderPills(rowId); syncTextarea(rowId);
+}
+function toggleDropdown(rowId) {
+  if (rowState[rowId]?.na) return;
+  document.querySelectorAll('.spec-dropdown.open').forEach(d=>{ if(d.id!=='dd-'+rowId)d.classList.remove('open'); });
+  const dd = document.getElementById('dd-'+rowId); if (!dd) return;
+  if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  const pills = document.querySelector(`#sel-${rowId} .spec-pills`);
+  if (pills) {
+    const rect = pills.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const dropH = Math.min(220, dd.scrollHeight || 220);
+    dd.style.left = rect.left + 'px'; dd.style.width = rect.width + 'px';
+    if (spaceBelow >= dropH || spaceBelow >= spaceAbove) { dd.style.top = (rect.bottom + 3) + 'px'; dd.style.bottom = 'auto'; }
+    else { dd.style.bottom = (window.innerHeight - rect.top + 3) + 'px'; dd.style.top = 'auto'; }
+  }
+  dd.classList.add('open');
+}
+function selectOption(rowId, spec) {
+  if (!rowState[rowId] || rowState[rowId].na) return;
+  const idx = rowState[rowId].selected.indexOf(spec);
+  const opt = document.querySelector(`#dd-${rowId} .spec-option[data-val="${CSS.escape(spec)}"]`);
+  if (idx===-1){rowState[rowId].selected.push(spec);opt?.classList.add('selected');}
+  else{rowState[rowId].selected.splice(idx,1);opt?.classList.remove('selected');}
+  updateSALabel(rowId); renderPills(rowId); syncTextarea(rowId);
+}
+function selectAll(rowId) {
+  if (!rowState[rowId] || rowState[rowId].na) return;
+  const opts = document.querySelectorAll(`#dd-${rowId} .spec-option`);
+  const all = rowState[rowId].selected.length===opts.length;
+  rowState[rowId].selected=[];
+  opts.forEach(o=>{o.classList.remove('selected');if(!all){rowState[rowId].selected.push(o.getAttribute('data-val'));o.classList.add('selected');}});
+  updateSALabel(rowId); renderPills(rowId); syncTextarea(rowId);
+}
+function updateSALabel(rowId) {
+  const dd=document.getElementById('dd-'+rowId); if(!dd) return;
+  const lbl=dd.querySelector('.sa-label');
+  if(lbl) lbl.textContent=rowState[rowId].selected.length===dd.querySelectorAll('.spec-option').length?'Deselect all':'Select all';
+}
+function updateNoteAuthor(rowId) {
+  const lbl = document.getElementById('nauthor-'+rowId); if (!lbl) return;
+  const ta  = document.getElementById('ta-'+rowId);
+  if (!ta || !ta.value.trim()) { lbl.textContent = ''; lbl.className = 'note-author'; return; }
+  const ts  = getModeTs();
+  const who = currentMode === 'reviewer' ? 'Reviewer' : 'Mapper';
+  if (rowState[rowId]) { rowState[rowId].noteAuthor = currentMode; rowState[rowId].noteTs = ts; }
+  lbl.textContent = `Last edited by: ${who} · ${ts}`;
+  lbl.className   = 'note-author by-' + currentMode;
+}
+function restoreNoteAuthor(rowId) {
+  const lbl = document.getElementById('nauthor-'+rowId); if (!lbl) return;
+  const rs  = rowState[rowId]; if (!rs || !rs.noteAuthor || !rs.taValue) { lbl.textContent=''; return; }
+  lbl.textContent = `Last edited by: ${rs.noteAuthor === 'reviewer' ? 'Reviewer' : 'Mapper'} · ${rs.noteTs||''}`;
+  lbl.className   = 'note-author by-' + rs.noteAuthor;
+}
+function recomputeMapMeta(mapId) {
+  const sheet = document.getElementById('sheet-' + mapId);
+  if (!sheet || !mapMeta[mapId]) return;
+  let total = 0, checked = 0;
+  Object.keys(rowState).forEach(k => {
+    if (!k.startsWith(mapId + '_')) return;
+    if (rowState[k].na) return;
+    total++;
+    const cb = document.getElementById('cb-' + k);
+    if (cb?.classList.contains('checked')) checked++;
+  });
+  mapMeta[mapId].total = total;
+  mapMeta[mapId].checked = checked;
+}
+function toggleCb(rowId) {
+  if (!rowState[rowId] || rowState[rowId].na) return;
+  const cb=document.getElementById('cb-'+rowId); if(!cb) return;
+  cb.classList.toggle('checked');
+  const parts=rowId.split('_'); const mapId=parts[0], si=parseInt(parts[1]);
+  recomputeMapMeta(mapId);
+  updateTabProgress(mapId);
+  const block = document.getElementById(`secblock-${mapId}-${si}`);
+  if(block) updateSectionSummary(mapId, si, block);
+}
+function toggleNA(rowId) {
+  if (!rowState[rowId]) return;
+  const s=rowState[rowId]; s.na=!s.na;
+  const tr = document.getElementById('row-'+rowId);
+  tr?.classList.toggle('na-row', s.na);
+  const btn=document.getElementById('nabtn-'+rowId);
+  if(btn){btn.classList.toggle('active',s.na);btn.textContent=s.na?'Unmark N/A':'N/A';}
+  // Lock/unlock status select and textarea
+  const rsSel = document.getElementById('rs-'+rowId);
+  const ta = document.getElementById('ta-'+rowId);
+  const pillsEl = document.querySelector(`#sel-${rowId} .spec-pills`);
+  if (s.na) {
+    if (rsSel) { rsSel.value='none'; rsSel.className='row-status-select rs-na'; rsSel.disabled=true; if(rowState[rowId])rowState[rowId].rowStatus='none'; }
+    if (ta) { ta.disabled=true; ta.style.pointerEvents='none'; ta.style.opacity='0.4'; }
+    if (pillsEl) pillsEl.style.pointerEvents='none';
+    // Remove row tint
+    tr?.classList.remove('rs-row-mapper','rs-row-guidance','rs-row-good');
+    const cb = document.getElementById('cb-'+rowId);
+    if (cb) cb.classList.remove('checked');
+  } else {
+    if (rsSel) { rsSel.disabled=false; rsSel.className='row-status-select rs-none'; }
+    if (ta) { ta.disabled=false; ta.style.pointerEvents=''; ta.style.opacity=''; }
+    if (pillsEl) pillsEl.style.pointerEvents='';
+  }
+  const parts=rowId.split('_'); const mapId=parts[0], si=parseInt(parts[1]);
+  recomputeMapMeta(mapId);
+  updateTabProgress(mapId);
+  const block=document.getElementById(`secblock-${mapId}-${si}`);
+  if(block) updateSectionSummary(mapId, si, block);
+  checkSectionAllGood(mapId, si);
+  const strip = document.getElementById('summary-' + mapId);
+  if (strip) { if (strip.classList.contains('open')) refreshSummary(mapId); else updateSummaryCount(mapId); }
+}
+function clearRow(rowId) {
+  if(!rowState[rowId]) return;
+  rowState[rowId].selected=[];
+  document.querySelectorAll(`#dd-${rowId} .spec-option`).forEach(o=>o.classList.remove('selected'));
+  updateSALabel(rowId); renderPills(rowId);
+  const ta=document.getElementById('ta-'+rowId);
+  if(ta){ta.value='';ta.classList.remove('has-content');}
+}
+
+// ── Tab / map ─────────────────────────────────────────────────
+function updateTabProgress(mapId) {
+  const m=mapMeta[mapId]; if(!m) return;
+  const pct=m.total>0?Math.round(m.checked/m.total*100):0;
+  document.getElementById('pfill-'+mapId)?.style.setProperty('width',pct+'%');
+  const lbl=document.getElementById('plabel-'+mapId); if(lbl) lbl.textContent=`${m.checked} of ${m.total} items reviewed`;
+  const pctEl=document.getElementById('ppct-'+mapId); if(pctEl) pctEl.textContent=pct+'%';
+  const dot=document.querySelector(`#tab-${mapId} .tab-dot`);
+  if(dot) dot.style.background=pct===100?'#4caf50':pct>0?'#f5a623':'#ccc';
+}
+function switchTab(mapId) {
+  document.querySelectorAll('.map-sheet').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sheet-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sheet-'+mapId)?.classList.add('active');
+  document.getElementById('tab-'+mapId)?.classList.add('active');
+  activeMapId=mapId;
+  if(panelOpen && panelMapId !== mapId) closePanel();
+}
+function startRenameTab(mapId, e) {
+  e.stopPropagation();
+  const tab=document.getElementById('tab-'+mapId); if(!tab) return;
+  const span=tab.querySelector('.tab-name'), old=span.textContent;
+  span.style.display='none';
+  const input=document.createElement('input'); input.className='tab-name-input';
+  input.value=old==='Untitled map'?'':old; input.placeholder='Map name';
+  tab.insertBefore(input,span); input.focus(); input.select();
+  const finish=()=>{
+    const n=input.value.trim()||'Untitled map';
+    span.textContent=n; span.style.display=''; input.remove();
+    const mi=document.getElementById('maptitle-'+mapId); if(mi) mi.value=n==='Untitled map'?'':n;
+  };
+  input.addEventListener('blur',finish);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();input.blur();}if(e.key==='Escape'){input.value=old;input.blur();}});
+}
+function updateTabName(mapId) {
+  const tab=document.getElementById('tab-'+mapId); if(!tab) return;
+  const span=tab.querySelector('.tab-name'); if(!span||tab.querySelector('.tab-name-input')) return;
+  const mi=document.getElementById('maptitle-'+mapId);
+  span.textContent=(mi?.value.trim())||'Untitled map';
+}
+function removeMap(mapId) {
+  if(document.querySelectorAll('.sheet-tab').length<=1){showConfirm('Cannot remove','At least one map must remain.',()=>{});return;}
+  const name=document.getElementById('tab-'+mapId)?.querySelector('.tab-name')?.textContent||'this map';
+  showConfirm(`Remove "${name}"?`,'This will permanently delete this map\'s checklist and all entered data.',()=>{
+    Object.keys(rowState).forEach(k=>{if(k.startsWith(mapId+'_'))delete rowState[k];});
+    delete mapMeta[mapId]; delete mapAttach[mapId]; delete mapExportHistory[mapId];
+    document.getElementById('sheet-'+mapId)?.remove();
+    const tab=document.getElementById('tab-'+mapId);
+    const all=Array.from(document.querySelectorAll('.sheet-tab'));
+    const next=all[all.indexOf(tab)+1]||all[all.indexOf(tab)-1];
+    tab?.remove();
+    if(next) switchTab(next.id.replace('tab-',''));
+    if(panelOpen&&panelMapId===mapId) closePanel();
+  });
+}
+
+// ── Per-row history rendering ─────────────────────────────────
+function chipHtml(status) {
+  const map = { mapper:'chip-mapper', guidance:'chip-guidance', good:'chip-good', none:'chip-none', na:'chip-na' };
+  const lbl = { mapper:'Mapper to fix', guidance:'Need guidance', good:'Good', none:'Unset', na:'N/A' };
+  return `<span class="status-chip ${map[status]||'chip-none'}">${lbl[status]||status}</span>`;
+}
+
+function renderRowHistoryToggle(rowId, mapId) {
+  const cell = document.getElementById('histcell-'+rowId);
+  if (!cell) return;
+  const ta = document.getElementById('ta-'+rowId);
+  const hasContent = ta && ta.value.trim().length > 0;
+  const rounds = (mapExportHistory[mapId] || []).filter(r => r.rows && r.rows[rowId]);
+  if (!hasContent && rounds.length === 0) { cell.innerHTML = ''; return; }
+  const flagCount = rounds.filter(r => r.rows[rowId].status === 'mapper' || r.rows[rowId].status === 'guidance').length;
+  const allGood = rounds.length > 0 && rounds.every(r => r.rows[rowId].status === 'good' || r.rows[rowId].status === 'none');
+  const countClass = allGood ? 'all-good' : flagCount > 0 ? 'has-flags' : '';
+  const isOpen = cell.querySelector('.row-history-wrap.open') !== null;
+
+  // Get meta for person names
+  const sheet = document.getElementById('sheet-'+mapId);
+  const mapperName   = sheet?.querySelector('.card-meta input:nth-child(1)')?.value
+    || sheet?.querySelector('[id^="maptitle-"]')?.closest('.map-header')?.querySelectorAll('.card-meta input')?.[0]?.value
+    || 'Mapper';
+  const reviewerName = sheet?.querySelectorAll('.card-meta input')?.[1]?.value || 'Reviewer';
+
+  const rowsHtml = rounds.length > 0 ? rounds.map((r,ri) => {
+    const h = r.rows[rowId];
+    const isReviewer = r.exportedBy === 'reviewer';
+    const personName = isReviewer ? (reviewerName||'Reviewer') : (mapperName||'Mapper');
+    const dirLabel   = isReviewer ? 'Reviewer comments' : 'Sent for review';
+    const chipClass  = isReviewer ? 'chip-guidance' : 'chip-mapper';
+    return `<div class="rh-item">
+      <span class="rh-round">Round ${ri+1}</span>
+      <span class="rh-ts">${r.ts||''}</span>
+      <span class="rh-note ${h.note?'':'empty'}">${h.note||'No note recorded'}</span>
+      <span class="rh-status">${chipHtml(h.status)}</span>
+    </div>
+    <div class="rh-meta"><span class="rh-dir-chip ${chipClass}">${dirLabel}</span><span class="rh-person">by ${personName}</span></div>`;
+  }).join('') : '';
+
+  cell.innerHTML = `<div class="row-history-wrap${isOpen?' open':''}" id="rhwrap-${rowId}">
+    <div class="row-history-toggle" onclick="toggleRowHistory('${rowId}')">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#bbb" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="#bbb" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="rht-label">${rounds.length > 0 ? rounds.length + ' previous round' + (rounds.length>1?'s':'') : 'Not yet exported'}</span>
+      ${rounds.length > 0 ? `<span class="rht-count ${countClass}">${rounds.length}</span>` : ''}
+      ${rounds.length > 0 ? `<span class="rht-chevron">▼</span>` : ''}
+    </div>
+    ${rounds.length > 0 ? `<div class="row-history-body">${rowsHtml}</div>` : ''}
+  </div>`;
+}
+
+function updateRowHistoryToggle(rowId) {
+  const parts = rowId.split('_');
+  renderRowHistoryToggle(rowId, parts[0]);
+}
+
+function toggleRowHistory(rowId) {
+  const wrap = document.getElementById('rhwrap-'+rowId);
+  if (wrap) wrap.classList.toggle('open');
+}
+
+// ── General comment history ───────────────────────────────────
+function renderGCHistory(mapId) {
+  const body = document.getElementById('gcbody-' + mapId);
+  const label = document.getElementById('gctoglabel-' + mapId);
+  if (!body || !label) return;
+  const rounds = (mapExportHistory[mapId] || []).filter(r => r.generalComment && r.generalComment.trim());
+  if (rounds.length === 0) { label.textContent = 'No previous rounds'; body.innerHTML = ''; return; }
+  label.textContent = `Show ${rounds.length} previous round${rounds.length>1?'s':''}`;
+  body.innerHTML = rounds.map(r => `<div class="gc-hist-row"><span class="gc-hist-round">${r.round}</span><span class="gc-hist-ts">${r.ts}</span><span class="gc-hist-note">${r.generalComment}</span></div>`).join('');
+}
+function toggleGCHistory(mapId) {
+  const wrap = document.getElementById('gcwrap-'+mapId); if (!wrap) return;
+  const isOpen = wrap.classList.toggle('open');
+  const label = document.getElementById('gctoglabel-'+mapId);
+  const rounds = (mapExportHistory[mapId] || []).filter(r => r.generalComment && r.generalComment.trim());
+  if (label) label.textContent = isOpen ? 'Hide previous rounds' : `Show ${rounds.length} previous round${rounds.length!==1?'s':''}`;
+}
+
+// ── Build section block ───────────────────────────────────────
+function buildSectionBlock(mapId, secDef, si, restoreData) {
+  const block = document.createElement('div');
+  block.className = 'section-block';
+  block.id = `secblock-${mapId}-${si}`;
+  block.setAttribute('data-map', mapId);
+  block.setAttribute('data-si', si);
+  block.setAttribute('draggable', 'true');
+  block.addEventListener('dragstart', e => onSecDragStart(e, mapId, block));
+  block.addEventListener('dragover', e => onSecDragOver(e, block));
+  block.addEventListener('dragleave', () => onSecDragLeave(block));
+  block.addEventListener('drop', e => onSecDrop(e, mapId, block));
+  block.addEventListener('dragend', () => onSecDragEnd(block));
+
+  const header = document.createElement('div');
+  header.className = 'section-header';
+  header.id = `hdr-${mapId}-${si}`;
+  header.onclick = e => { if (!e.target.closest('.section-drag-handle')) toggleSection(block); };
+  header.innerHTML = `
+    <div class="section-drag-handle" title="Drag to reorder"><span></span><span></span><span></span></div>
+    <div class="section-title">${secDef.title}</div>
+    <span class="section-spacer"></span>
+    <span class="section-summary" id="secsummary-${mapId}-${si}">0/${secDef.isDynamic ? 0 : secDef.rows.length}</span>
+    <span class="section-chevron">▼</span>`;
+  block.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'section-body';
+
+  if (secDef.isDynamic) {
+    const LAYER_SPECS = ["Layer name","Layer type (point/line/polygon/raster)","Colour scheme / ramp","Min colour (hex)","Max colour (hex)","Null / NoData colour (hex)","Classification method","Number of classes","Break values","Point marker shape","Point size (pt)","Line width (pt)","Line style (solid/dashed/dotted)","Polygon fill opacity (%)","Outline colour (hex)","Outline width (pt)","Transparency (%)","Draw order","Colourblind-safe check"];
+    const LAYER_TYPES = ['point','line','polygon','raster'];
+    const dynState = restoreData?.dynamicLayers?.[`${mapId}_${si}`] || [];
+    let layerCount = 0;
+
+    const table = document.createElement('table');
+    table.id = `dyntable-${mapId}-${si}`;
+    table.innerHTML = `<colgroup><col class="c-status"><col class="c-check"><col class="c-element"><col class="c-specs"><col class="c-changes"></colgroup>
+      <thead><tr><th>Status</th><th></th><th>Data layer</th><th>Specs to review</th><th>Note</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+
+    function addLayerRow(layerData) {
+      const lid = `${mapId}_${si}_L${layerCount++}`;
+      const lrd = layerData || {};
+      const rowStatusVal = lrd.rowStatus || 'none';
+      const isNA = !!lrd.na;
+      rowState[lid] = { selected: lrd.selected||[], na: isNA, isLayer: true, rowStatus: rowStatusVal };
+      if (!isNA) mapMeta[mapId].total++;
+      if (lrd.checked && !isNA) mapMeta[mapId].checked++;
+
+      const optHtml = LAYER_SPECS.map(s => {
+        const safe = s.replace(/"/g,'&quot;').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<div class="spec-option${rowState[lid].selected.includes(s)?' selected':''}" data-val="${s.replace(/"/g,'&quot;')}" onclick="selectOption('${lid}','${safe}')"><span class="opt-check"></span>${s}</div>`;
+      }).join('');
+      const pillsHtml = rowState[lid].selected.length
+        ? rowState[lid].selected.map(spec=>{const s=spec.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<span class="spec-pill">${spec}<span class="remove" onclick="event.stopPropagation();removeSpec('${lid}','${s}')">×</span></span>`;}).join('')
+        : '<span class="pill-placeholder">Select specs to review...</span>';
+      const taVal = lrd.taValue||'';
+      const layerName = lrd.layerName||'';
+      const layerType = lrd.layerType||'polygon';
+      const typeSelectHtml = `<select class="layer-type-select ltype-${layerType}" id="ltype-${lid}" onchange="updateLayerTypeStyle(this)">${LAYER_TYPES.map(t=>`<option value="${t}"${layerType===t?' selected':''}>${t}</option>`).join('')}</select>`;
+      const effectiveStatus = isNA ? 'na' : rowStatusVal;
+
+      const tr = document.createElement('tr');
+      tr.className = `layer-row${rowStatusVal !== 'none' && !isNA ? ' rs-row-'+rowStatusVal : ''}`;
+      tr.id = 'row-'+lid;
+      if (isNA) tr.classList.add('na-row');
+      const rowStatusSelectHtml = `<select class="row-status-select rs-${isNA?'na':rowStatusVal}" id="rs-${lid}" onchange="setRowStatus('${lid}','${mapId}','${si}',this)"${isNA?' disabled':''}>
+        <option value="none"${rowStatusVal==='none'?' selected':''}>— Unset</option>
+        <option value="mapper"${rowStatusVal==='mapper'?' selected':''}>Mapper to fix</option>
+        <option value="guidance"${rowStatusVal==='guidance'?' selected':''}>Need guidance</option>
+        <option value="good"${rowStatusVal==='good'?' selected':''}>Good</option>
+      </select>`;
+      tr.innerHTML = `
+        <td style="vertical-align:top;padding:8px 6px">${rowStatusSelectHtml}</td>
+        <td style="vertical-align:middle;text-align:center;padding:8px 5px">
+          <div class="cb${lrd.checked?' checked':''}" id="cb-${lid}" onclick="toggleCb('${lid}')"></div>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <input class="layer-name-input" id="lname-${lid}" value="${layerName.replace(/"/g,'&quot;')}" placeholder="Layer name…" oninput="updateLayerSummary('${mapId}','${si}')"${isNA?' disabled':''}>
+            <button class="remove-layer-btn" onclick="removeLayerRow('${lid}','${mapId}','${si}')" title="Remove layer">×</button>
+          </div>
+          <div>${typeSelectHtml}</div>
+        </td>
+        <td>
+          <div class="spec-selector" id="sel-${lid}">
+            <div class="spec-pills" onclick="toggleDropdown('${lid}')" style="${isNA?'pointer-events:none':''}">${pillsHtml}</div>
+            <div class="spec-dropdown" id="dd-${lid}">
+              <div class="dd-select-all" onclick="selectAll('${lid}')"><span class="sa-label">Select all</span></div>
+              ${optHtml}
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="changes-cell">
+            <textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${lid}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${lid}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
+            <div class="row-actions">
+              <button class="na-btn${isNA?' active':''}" id="nabtn-${lid}" onclick="toggleNA('${lid}')">${isNA?'Unmark N/A':'N/A'}</button>
+              <button class="clear-btn" onclick="clearRow('${lid}')">Clear</button>
+            </div>
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+
+      // History sub-row
+      const histTr = document.createElement('tr');
+      histTr.id = 'histrow-' + lid;
+      histTr.innerHTML = `<td colspan="5" class="row-history-cell" id="histcell-${lid}"></td>`;
+      tbody.appendChild(histTr);
+      renderRowHistoryToggle(lid, mapId);
+    }
+
+    if (dynState.length) dynState.forEach(ld => addLayerRow(ld));
+    else addLayerRow();
+
+    const addTr = document.createElement('tr');
+    addTr.className = 'add-layer-row'; addTr.id = `addlayer-${mapId}-${si}`;
+    addTr.innerHTML = `<td></td><td></td><td colspan="3"><button class="add-layer-btn" onclick="addNewLayer('${mapId}','${si}')">+ Add data layer</button></td>`;
+    tbody.appendChild(addTr);
+    body.appendChild(table);
+    block._addLayerRow = addLayerRow;
+    block._tbody = tbody;
+    block._addTr = addTr;
+
+  } else {
+    const table = document.createElement('table');
+    table.innerHTML = `<colgroup><col class="c-status"><col class="c-check"><col class="c-element"><col class="c-specs"><col class="c-changes"></colgroup>
+      <thead><tr><th>Status</th><th></th><th>Element</th><th>Specs to review</th><th>Note</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+
+    secDef.rows.forEach((row, ri) => {
+      const rowId = `${mapId}_${si}_${ri}`;
+      const rd = restoreData?.rows?.[rowId];
+      const rowStatusVal = rd?.rowStatus || 'none';
+      const isNA = !!rd?.na;
+      rowState[rowId] = { selected: rd?.selected||[], na: isNA, rowStatus: rowStatusVal,
+        noteAuthor: rd?.noteAuthor||'', noteTs: rd?.noteTs||'', taValue: rd?.taValue||'' };
+      if (!isNA) mapMeta[mapId].total++;
+      if (rd?.checked && !isNA) mapMeta[mapId].checked++;
+
+      const optHtml = row.specs.map(s => {
+        const safe = s.replace(/"/g,'&quot;').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<div class="spec-option${rowState[rowId].selected.includes(s)?' selected':''}" data-val="${s.replace(/"/g,'&quot;')}" onclick="selectOption('${rowId}','${safe}')"><span class="opt-check"></span>${s}</div>`;
+      }).join('');
+      const pillsHtml = rowState[rowId].selected.length
+        ? rowState[rowId].selected.map(spec=>{const s=spec.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<span class="spec-pill">${spec}<span class="remove" onclick="event.stopPropagation();removeSpec('${rowId}','${s}')">×</span></span>`;}).join('')
+        : '<span class="pill-placeholder">Select specs to review...</span>';
+      const taVal = rd?.taValue||'';
+
+      const tr = document.createElement('tr');
+      tr.id='row-'+rowId;
+      if (rowStatusVal !== 'none' && !isNA) tr.classList.add('rs-row-'+rowStatusVal);
+      if (isNA) tr.classList.add('na-row');
+
+      const rowStatusSelectHtml = `<select class="row-status-select rs-${isNA?'na':rowStatusVal}" id="rs-${rowId}" onchange="setRowStatus('${rowId}','${mapId}','${si}',this)"${isNA?' disabled':''}>
+        <option value="none"${rowStatusVal==='none'?' selected':''}>— Unset</option>
+        <option value="mapper"${rowStatusVal==='mapper'?' selected':''}>Mapper to fix</option>
+        <option value="guidance"${rowStatusVal==='guidance'?' selected':''}>Need guidance</option>
+        <option value="good"${rowStatusVal==='good'?' selected':''}>Good</option>
+      </select>`;
+      tr.innerHTML = `
+        <td style="vertical-align:top;padding:8px 6px">${rowStatusSelectHtml}</td>
+        <td><div class="cb${rd?.checked?' checked':''}" id="cb-${rowId}" onclick="toggleCb('${rowId}')"></div></td>
+        <td><div class="el-name">${row.name}<span class="el-tag ${TAG_CLASS[row.tag]}">${TAG_LABEL[row.tag]}</span></div><div class="el-desc">${row.desc}</div></td>
+        <td><div class="spec-selector" id="sel-${rowId}"><div class="spec-pills" onclick="toggleDropdown('${rowId}')" style="${isNA?'pointer-events:none':''}">${pillsHtml}</div><div class="spec-dropdown" id="dd-${rowId}"><div class="dd-select-all" onclick="selectAll('${rowId}')"><span class="sa-label">Select all</span></div>${optHtml}</div></div></td>
+        <td><div class="changes-cell"><textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${rowId}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${rowId}');updateNoteAuthor('${rowId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea><div class="note-author" id="nauthor-${rowId}"></div><div class="row-actions"><button class="na-btn${isNA?' active':''}" id="nabtn-${rowId}" onclick="toggleNA('${rowId}')">${isNA?'Unmark N/A':'N/A'}</button><button class="clear-btn" onclick="clearRow('${rowId}')">Clear</button></div></div></td>`;
+      tbody.appendChild(tr);
+
+      // History sub-row
+      const histTr = document.createElement('tr');
+      histTr.id = 'histrow-' + rowId;
+      histTr.innerHTML = `<td colspan="5" class="row-history-cell" id="histcell-${rowId}"></td>`;
+      tbody.appendChild(histTr);
+      renderRowHistoryToggle(rowId, mapId);
+      restoreNoteAuthor(rowId);
+    });
+
+    table.appendChild(tbody);
+    body.appendChild(table);
+  }
+
+  block.appendChild(body);
+
+  const savedOpen = restoreData?.sectionOpen;
+  if (savedOpen) { if (savedOpen[mapId+'_'+si]) block.classList.add('open'); }
+  else { if (si === 0) block.classList.add('open'); }
+
+  return block;
+}
+
+// ── Add map ───────────────────────────────────────────────────
+function addMap(restoreData) {
+  mapCounter++;
+  const mapId = 'm'+mapCounter;
+  mapMeta[mapId] = { total:0, checked:0 };
+  if (!mapExportHistory[mapId]) mapExportHistory[mapId] = [];
+  if (restoreData?.exportHistory) mapExportHistory[mapId] = restoreData.exportHistory;
+  if (restoreData?.mode) applyModeFromState(restoreData.mode);
+
+  const sheet = document.createElement('div');
+  sheet.className='map-sheet'; sheet.id='sheet-'+mapId;
+
+  const hdr = document.createElement('div'); hdr.className='map-header';
+  const hdrTop = document.createElement('div'); hdrTop.className='map-header-top';
+  const titleBlock = document.createElement('div'); titleBlock.className='map-title-block';
+  const titleLabel = document.createElement('div'); titleLabel.className='map-title-label'; titleLabel.textContent='Map name';
+  const titleInput = document.createElement('input'); titleInput.className='map-title-input';
+  titleInput.id='maptitle-'+mapId; titleInput.placeholder='Enter map name';
+  titleInput.setAttribute('oninput', `updateTabName('${mapId}')`);
+  titleInput.value = restoreData?.meta?.['Map title']||'';
+  titleBlock.appendChild(titleLabel); titleBlock.appendChild(titleInput);
+
+  const attachBtn = document.createElement('button');
+  attachBtn.className='map-attach-btn'; attachBtn.id='attachbtn-'+mapId;
+  attachBtn.setAttribute('onclick', `panelMapId='${mapId}';toggleAttachPanel('${mapId}')`);
+  attachBtn.innerHTML=`<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 1l3 3v9a1.5 1.5 0 01-1.5 1.5H11" stroke="currentColor" stroke-width="1.4"/><line x1="4" y1="5" x2="8" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="4" y1="7.5" x2="8" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span class="attach-btn-label">Attach map</span>`;
+  if (restoreData && mapAttach[mapId]) {
+    attachBtn.classList.add('has-file');
+    attachBtn.querySelector('.attach-btn-label').textContent = mapAttach[mapId].name.substring(0,20)+(mapAttach[mapId].name.length>20?'…':'');
+  }
+  hdrTop.appendChild(titleBlock); hdrTop.appendChild(attachBtn); hdr.appendChild(hdrTop);
+
+  // Meta fields — Mapper is first (maps to "Map author" in Excel overview)
+  const metaGrid = document.createElement('div'); metaGrid.className='card-meta';
+  const mf=['Mapper','Reviewer','Review date','Version / file','Output format'];
+  const mp=['Mapper name','Reviewer name','YYYY-MM-DD','v1.0 / filename','e.g. A3 PDF / PNG'];
+  mf.forEach((label,i)=>{
+    const div=document.createElement('div'); div.className='meta-field';
+    const val=(restoreData?.meta?.[label]||'').replace(/"/g,'&quot;');
+    div.innerHTML=`<label>${label}</label><input type="text" placeholder="${mp[i]}" value="${val}">`;
+    metaGrid.appendChild(div);
+  });
+  hdr.appendChild(metaGrid);
+
+  // Progress
+  const progStrip=document.createElement('div'); progStrip.className='progress-strip';
+  progStrip.innerHTML=`<span class="progress-label" id="plabel-${mapId}">0 of 0 items reviewed</span><div class="progress-bar-track"><div class="progress-bar-fill" id="pfill-${mapId}" style="width:0%"></div></div><span class="progress-pct" id="ppct-${mapId}">0%</span>`;
+  hdr.appendChild(progStrip);
+
+  // General comment
+  const gcBlock = document.createElement('div');
+  gcBlock.className = 'general-comment-block'; gcBlock.id = 'gcblock-'+mapId;
+  const gcVal = (restoreData?.generalComment || '').replace(/"/g,'&quot;');
+  gcBlock.innerHTML = `
+    <div class="gc-label">General comments</div>
+    <textarea class="gc-textarea${gcVal?' has-content':''}" id="gcta-${mapId}" placeholder="Overall notes for this review round…" oninput="this.classList.toggle('has-content',this.value.trim().length>0)">${gcVal}</textarea>
+    <div class="gc-history-wrap" id="gcwrap-${mapId}">
+      <button class="gc-history-toggle" onclick="toggleGCHistory('${mapId}')">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#aaa" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span id="gctoglabel-${mapId}">No previous rounds</span>
+        <span class="gc-history-chevron" id="gcchev-${mapId}">▼</span>
+      </button>
+      <div class="gc-history-body" id="gcbody-${mapId}"></div>
+    </div>`;
+  hdr.appendChild(gcBlock);
+  renderGCHistory(mapId);
+
+  // Changes summary
+  const summaryStrip = document.createElement('div');
+  summaryStrip.className = 'summary-strip'; summaryStrip.id = 'summary-'+mapId;
+  summaryStrip.innerHTML = `
+    <div class="summary-header" onclick="this.closest('.summary-strip').classList.toggle('open');refreshSummary('${mapId}')">
+      <span class="summary-header-label">Changes summary</span>
+      <span class="summary-count" id="scount-${mapId}">0</span>
+      <span class="summary-chevron">▼</span>
+    </div>
+    <div class="summary-body" id="sbody-${mapId}"><span class="summary-empty">No fields flagged yet.</span></div>`;
+  hdr.appendChild(summaryStrip);
+
+  sheet.appendChild(hdr);
+
+  // Scrollable sections
+  const scroll = document.createElement('div'); scroll.className='sections-scroll';
+  const secOrder = (restoreData?.sectionOrder) || SECTIONS_DEF.map((_,i)=>i);
+  secOrder.forEach(si => {
+    const secDef = SECTIONS_DEF[si]; if (!secDef) return;
+    const block = buildSectionBlock(mapId, secDef, si, restoreData);
+    scroll.appendChild(block);
+  });
+  sheet.appendChild(scroll);
+  document.getElementById('content-pane').appendChild(sheet);
+
+  // Tab
+  const tab=document.createElement('div'); tab.className='sheet-tab'; tab.id='tab-'+mapId;
+  tab.onclick=()=>switchTab(mapId); tab.ondblclick=e=>startRenameTab(mapId,e);
+  const tname=restoreData?.meta?.['Map title']||'Untitled map';
+  tab.innerHTML=`<span class="tab-dot"></span><span class="tab-name">${tname}</span><button class="tab-close" onclick="event.stopPropagation();removeMap('${mapId}')" title="Remove">×</button>`;
+  document.getElementById('tab-bar').insertBefore(tab,document.querySelector('.tab-add-btn'));
+
+  if (restoreData?.attachedFile) { mapAttach[mapId] = restoreData.attachedFile; updateAttachBtn(mapId); }
+
+  updateTabProgress(mapId);
+  SECTIONS_DEF.forEach((_,si)=>{
+    const block=document.getElementById(`secblock-${mapId}-${si}`);
+    if(block) updateSectionSummary(mapId, si, block);
+    checkSectionAllGood(mapId, si);
+  });
+  updateSummaryCount(mapId);
+  switchTab(mapId);
+  return mapId;
+}
+
+// ── Dynamic layer helpers ─────────────────────────────────────
+function addNewLayer(mapId, si) {
+  const block = document.getElementById(`secblock-${mapId}-${si}`);
+  if (!block || !block._addLayerRow || !block._addTr) return;
+  block._addLayerRow();
+  block._tbody.appendChild(block._addTr);
+  updateLayerSummary(mapId, si);
+  updateTabProgress(mapId);
+}
+function removeLayerRow(lid, mapId, si) {
+  const tr = document.getElementById('row-'+lid); if (tr) tr.remove();
+  const histTr = document.getElementById('histrow-'+lid); if (histTr) histTr.remove();
+  if (rowState[lid]) delete rowState[lid];
+  recomputeMapMeta(mapId);
+  updateLayerSummary(mapId, si);
+  updateTabProgress(mapId);
+  checkSectionAllGood(mapId, si);
+}
+function updateLayerTypeStyle(sel) { sel.className = 'layer-type-select ltype-' + sel.value; }
+function updateLayerSummary(mapId, si) {
+  const block = document.getElementById(`secblock-${mapId}-${si}`); if (!block) return;
+  const layerRows = block.querySelectorAll('.layer-row');
+  const summary = document.getElementById(`secsummary-${mapId}-${si}`);
+  if (summary) { const done = Array.from(layerRows).filter(r => r.querySelector('.cb.checked')).length; summary.textContent = `${done}/${layerRows.length}`; }
+}
+
+// ── Changes summary ───────────────────────────────────────────
+function refreshSummary(mapId) {
+  const body = document.getElementById('sbody-' + mapId);
+  const countEl = document.getElementById('scount-' + mapId);
+  if (!body || !countEl) return;
+  const sheet = document.getElementById('sheet-' + mapId); if (!sheet) return;
+
+  const items = [];
+  sheet.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+    if (tr.classList.contains('na-row') || tr.classList.contains('add-layer-row')) return;
+    const rowId = tr.id.replace('row-', '');
+    const rsSel = tr.querySelector('.row-status-select');
+    const ta = tr.querySelector('.changes-textarea');
+    const status = rsSel ? rsSel.value : 'none';
+    const note = ta ? ta.value.trim() : '';
+    // Don't count/show if status is 'good' (already resolved)
+    if (status === 'good') return;
+    if (status === 'none' && !note) return;
+
+    let fieldName = '';
+    const elName = tr.querySelector('.el-name');
+    if (elName) { fieldName = elName.childNodes[0]?.textContent?.trim() || elName.textContent.trim(); }
+    else { const lname = tr.querySelector('.layer-name-input'); fieldName = lname?.value?.trim() || 'Unnamed layer'; }
+    const secBlock = tr.closest('.section-block');
+    const secTitle = secBlock?.querySelector('.section-title')?.textContent || '';
+    items.push({ rowId, fieldName, secTitle, status, note });
+  });
+
+  countEl.textContent = items.length;
+  countEl.classList.toggle('has-items', items.length > 0);
+
+  if (!items.length) { body.innerHTML = '<span class="summary-empty">No fields flagged or noted yet.</span>'; return; }
+
+  const STATUS_LABEL = { mapper: 'Mapper', guidance: 'Guidance', none: '' };
+  const STATUS_CLS   = { mapper: 'sst-mapper', guidance: 'sst-guidance', none: '' };
+
+  const rows = items.map(item => {
+    const statusCell = item.status !== 'none'
+      ? `<span class="${STATUS_CLS[item.status]}">${STATUS_LABEL[item.status]}</span>`
+      : '<span style="color:#ccc">—</span>';
+    const notePreview = item.note
+      ? item.note.replace(/\n/g,' ').substring(0,70) + (item.note.length > 70 ? '…' : '')
+      : '<span style="color:#ccc">—</span>';
+    const safeRowId = item.rowId.replace(/'/g,"\\'");
+    return `<tr id="srow-${item.rowId}">
+      <td title="${item.fieldName}">${item.secTitle ? `<span style="color:#bbb;font-size:10px">${item.secTitle} › </span>` : ''}${item.fieldName}</td>
+      <td>${statusCell}</td>
+      <td>${notePreview}</td>
+      <td style="text-align:right;padding-right:4px">
+        <button class="rectify-btn" onclick="rectifyRow('${safeRowId}','${mapId}')" title="Remove from summary (keeps history)">✓ Rectified</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<table class="summary-table" style="table-layout:fixed">
+    <colgroup><col style="width:28%"><col style="width:12%"><col style="width:42%"><col style="width:18%"></colgroup>
+    <tr style="border-bottom:1px solid #e0e0e0">
+      <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">Field</td>
+      <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">Status</td>
+      <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">Note</td>
+      <td></td>
+    </tr>
+    ${rows}
+  </table>`;
+}
+
+function rectifyRow(rowId, mapId) {
+  // If already 'good', just remove from summary — don't change status
+  const rsSel = document.getElementById('rs-'+rowId);
+  const currentStatus = rsSel ? rsSel.value : 'none';
+
+  if (currentStatus !== 'good') {
+    // Not good: clear note and reset status to none
+    if (rsSel) {
+      rsSel.value = 'none';
+      rsSel.className = 'row-status-select rs-none';
+      if (rowState[rowId]) rowState[rowId].rowStatus = 'none';
+      const tr = document.getElementById('row-'+rowId);
+      if (tr) tr.classList.remove('rs-row-mapper','rs-row-guidance','rs-row-good');
+    }
+    const ta = document.getElementById('ta-'+rowId);
+    if (ta) { ta.value = ''; ta.classList.remove('has-content'); }
+  }
+  // Either way: animate row out and rebuild summary
+  const parts = rowId.split('_'); const si = parseInt(parts[1]);
+  if (!isNaN(si)) checkSectionAllGood(mapId, si);
+
+  const srow = document.getElementById('srow-'+rowId);
+  if (srow) {
+    const btn = srow.querySelector('.rectify-btn');
+    if (btn) { btn.classList.add('done'); btn.textContent = '✓ Rectified'; btn.disabled = true; }
+    srow.style.transition = 'opacity 0.4s';
+    srow.style.opacity = '0';
+    setTimeout(() => refreshSummary(mapId), 420);
+  } else {
+    refreshSummary(mapId);
+  }
+}
+
+function updateSummaryCount(mapId) {
+  const sheet = document.getElementById('sheet-' + mapId);
+  const countEl = document.getElementById('scount-' + mapId);
+  if (!sheet || !countEl) return;
+  let count = 0;
+  sheet.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+    if (tr.classList.contains('na-row') || tr.classList.contains('add-layer-row')) return;
+    const rsSel = tr.querySelector('.row-status-select');
+    const ta = tr.querySelector('.changes-textarea');
+    const status = rsSel ? rsSel.value : 'none';
+    if (status === 'good') return; // don't count 'good' rows
+    if (status !== 'none' || (ta && ta.value.trim())) count++;
+  });
+  countEl.textContent = count;
+  countEl.classList.toggle('has-items', count > 0);
+}
+
+let _confirmCb=null;
+function showConfirm(title,msg,onOk){document.getElementById('confirm-title').textContent=title;document.getElementById('confirm-msg').textContent=msg;_confirmCb=onOk;document.getElementById('confirm-overlay').classList.add('visible');}
+function dismissConfirm(){document.getElementById('confirm-overlay').classList.remove('visible');_confirmCb=null;}
+document.getElementById('confirm-ok').onclick=()=>{dismissConfirm();if(_confirmCb)_confirmCb();};
+document.getElementById('confirm-overlay').addEventListener('click',e=>{if(e.target.id==='confirm-overlay')dismissConfirm();});
+
+window.addEventListener('beforeunload',e=>{
+  const dirty=Object.values(rowState).some(s=>s.selected.length>0)||!!document.querySelector('.cb.checked')||Array.from(document.querySelectorAll('.changes-textarea')).some(t=>t.value.trim())||!!document.getElementById('project-name').value.trim();
+  if(dirty){e.preventDefault();e.returnValue='';}
+});
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.spec-selector')) document.querySelectorAll('.spec-dropdown.open').forEach(d=>d.classList.remove('open'));
+});
+
+// ── collectState ──────────────────────────────────────────────
+function collectState() {
+  const maps=[];
+  document.querySelectorAll('.map-sheet').forEach(s=>{
+    const mapId=s.id.replace('sheet-','');
+    const meta={};
+    const titleInput=s.querySelector('.map-title-input'); if(titleInput) meta['Map title']=titleInput.value;
+    const metaLabels=s.querySelectorAll('.card-meta label');
+    const metaInputs=s.querySelectorAll('.card-meta input');
+    metaLabels.forEach((l,i)=>{if(metaInputs[i])meta[l.textContent]=metaInputs[i].value;});
+    const rows={};
+    Object.keys(rowState).forEach(rowId=>{
+      if(!rowId.startsWith(mapId+'_')) return;
+      const cb=document.getElementById('cb-'+rowId), ta=document.getElementById('ta-'+rowId);
+      const rsSel=document.getElementById('rs-'+rowId);
+      rows[rowId]={selected:rowState[rowId].selected,na:rowState[rowId].na,checked:!!cb?.classList.contains('checked'),taValue:ta?.value||'',rowStatus:rsSel?.value||rowState[rowId]?.rowStatus||'none',noteAuthor:rowState[rowId]?.noteAuthor||'',noteTs:rowState[rowId]?.noteTs||''};
+    });
+    const sectionOrder=Array.from(s.querySelectorAll('.section-block')).map(b=>parseInt(b.getAttribute('data-si')));
+    const sectionOpen={};
+    s.querySelectorAll('.section-block').forEach(b=>{
+      const k=mapId+'_'+b.getAttribute('data-si');
+      if(b.classList.contains('open')) sectionOpen[k]=true;
+    });
+    const dynamicLayers={};
+    s.querySelectorAll('.section-block[data-si]').forEach(secBlock=>{
+      const siKey=secBlock.getAttribute('data-si');
+      if(!SECTIONS_DEF[parseInt(siKey)]?.isDynamic) return;
+      const dynKey=`${mapId}_${siKey}`;
+      const layers=[];
+      secBlock.querySelectorAll('.layer-row').forEach(tr=>{
+        const lid=tr.id.replace('row-','');
+        const nameInput=tr.querySelector('.layer-name-input');
+        const visibleBadge=tr.querySelector('.layer-type-select');
+        const cb=tr.querySelector('.cb');
+        const ta=tr.querySelector('.changes-textarea');
+        const rsSel=tr.querySelector('.row-status-select');
+        layers.push({layerName:nameInput?.value||'',layerType:visibleBadge?.value||'polygon',selected:rowState[lid]?.selected||[],na:!!rowState[lid]?.na,checked:!!cb?.classList.contains('checked'),taValue:ta?.value||'',rowStatus:rsSel?.value||rowState[lid]?.rowStatus||'none'});
+      });
+      dynamicLayers[dynKey]=layers;
+    });
+    const attachedFile=mapAttach[mapId]||null;
+    const exportHistory=mapExportHistory[mapId]||[];
+    const generalComment=document.getElementById('gcta-'+mapId)?.value||'';
+    maps.push({mapId,meta,rows,sectionOrder,sectionOpen,dynamicLayers,attachedFile,exportHistory,generalComment,mode:currentMode});
+  });
+  return maps;
+}
+
+// ── Save HTML ─────────────────────────────────────────────────
+function saveHTML() {
+  const state=collectState();
+  const proj=document.getElementById('project-name').value;
+  const payload=JSON.stringify({maps:state,project:proj}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
+  const clone = document.documentElement.cloneNode(true);
+  const cp = clone.querySelector('#content-pane'); if (cp) cp.innerHTML = '';
+  const tb = clone.querySelector('#tab-bar');
+  if (tb) {
+    Array.from(tb.children).forEach(child => {
+      if (!child.classList.contains('tab-add-btn') && child.id !== 'egg-dismiss' && child.id !== 'egg-text') child.remove();
+    });
+  }
+  const ed = clone.querySelector('#egg-dismiss'); if (ed) ed.style.display = '';
+  const et = clone.querySelector('#egg-text'); if (et) et.classList.remove('visible');
+  const restoreScript = `<script>window.__RESTORE_STATE__=${payload};<\/script>`;
+  const src = '<!DOCTYPE html>\n' + clone.outerHTML.replace('</head>', restoreScript + '</head>');
+  const blob=new Blob([src],{type:'text/html'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const slug=proj.trim().replace(/[^a-z0-9]/gi,'_')||'review';
+  a.download=`map_review_${slug}.html`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── Save Excel ────────────────────────────────────────────────
+// Build a lookup: rowId → human element name, for Change Log
+function buildElementNameLookup() {
+  const lookup = {};
+  document.querySelectorAll('.map-sheet').forEach(s => {
+    const mapId = s.id.replace('sheet-','');
+    // Static rows — pull name from el-name text node
+    s.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+      const rowId = tr.id.replace('row-','');
+      const elName = tr.querySelector('.el-name');
+      if (elName) {
+        lookup[rowId] = elName.childNodes[0]?.textContent?.trim() || elName.textContent.trim();
+      } else {
+        const lname = tr.querySelector('.layer-name-input');
+        lookup[rowId] = lname?.value?.trim() || 'Unnamed layer';
+      }
+    });
+  });
+  return lookup;
+}
+
+function saveExcel() {
+  try {
+    if (typeof XLSX === 'undefined') { alert('Excel library not loaded — check your internet connection.'); return; }
+
+    // ── 1. Snapshot this export round into history ────────────
+    const now = new Date();
+    const ts = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')
+      +' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const exportedBy = currentMode; // 'mapper' or 'reviewer'
+
+    // Build element name lookup BEFORE snapshot (DOM still intact)
+    const elemNameLookup = buildElementNameLookup();
+
+    document.querySelectorAll('.map-sheet').forEach(s => {
+      const mapId = s.id.replace('sheet-','');
+      if (!mapExportHistory[mapId]) mapExportHistory[mapId] = [];
+      const roundNum = mapExportHistory[mapId].length + 1;
+      const round = 'Round ' + roundNum;
+      const generalComment = document.getElementById('gcta-'+mapId)?.value || '';
+      const rowsSnapshot = {};
+      s.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+        if (tr.classList.contains('add-layer-row')) return;
+        const rowId = tr.id.replace('row-','');
+        const ta   = tr.querySelector('.changes-textarea');
+        const rsSel= tr.querySelector('.row-status-select');
+        const isNA = tr.classList.contains('na-row');
+        const note   = ta ? ta.value.trim() : '';
+        const status = isNA ? 'na' : (rsSel ? rsSel.value : 'none');
+        const elemName = elemNameLookup[rowId] || rowId;
+        if (note || status !== 'none') rowsSnapshot[rowId] = { note, status, elemName };
+      });
+      mapExportHistory[mapId].push({ round, ts, exportedBy, generalComment, rows: rowsSnapshot });
+      // Re-render row history toggles
+      s.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+        if (tr.classList.contains('add-layer-row')) return;
+        renderRowHistoryToggle(tr.id.replace('row-',''), mapId);
+      });
+      renderGCHistory(mapId);
+    });
+
+    // ── 2. Build workbook ─────────────────────────────────────
+    const wb   = XLSX.utils.book_new();
+    const proj = document.getElementById('project-name').value.trim() || 'Untitled Project';
+    const state= collectState();
+
+    // Style helpers
+    const hdrFill    = { patternType:'solid', fgColor:{rgb:'1A1A1A'} };
+    const hdrFont    = { bold:true, color:{rgb:'FFFFFF'}, name:'Arial', sz:10 };
+    const metaFill   = { patternType:'solid', fgColor:{rgb:'F0F0ED'} };
+    const metaFont   = { name:'Arial', sz:10 };
+    const naFill     = { patternType:'solid', fgColor:{rgb:'EBEBEB'} };
+    const naFont     = { name:'Arial', sz:10, color:{rgb:'BBBBBB'}, italic:true };
+    const secFills   = { none:{patternType:'solid',fgColor:{rgb:'333333'}}, mapper:{patternType:'solid',fgColor:{rgb:'4A2400'}}, guidance:{patternType:'solid',fgColor:{rgb:'1A2E4A'}}, good:{patternType:'solid',fgColor:{rgb:'0D2E18'}} };
+    const secFonts   = { none:{bold:true,color:{rgb:'999999'},name:'Arial',sz:10}, mapper:{bold:true,color:{rgb:'FFAA55'},name:'Arial',sz:10}, guidance:{bold:true,color:{rgb:'7BBFFF'},name:'Arial',sz:10}, good:{bold:true,color:{rgb:'4CCC7A'},name:'Arial',sz:10} };
+    const rowFontNorm= { name:'Arial', sz:10 };
+    const rowFontDone= { name:'Arial', sz:10, color:{rgb:'888888'} };
+    const rowFontNA  = { name:'Arial', sz:10, color:{rgb:'BBBBBB'}, italic:true };
+    const checkedFill= { patternType:'solid', fgColor:{rgb:'E8F5E9'} };
+    const notedFill  = { patternType:'solid', fgColor:{rgb:'FFFEF5'} };
+    const auditHdrFill={ patternType:'solid', fgColor:{rgb:'2C2C2C'} };
+    const auditFill  = { patternType:'solid', fgColor:{rgb:'FAFAF8'} };
+    const thin = { style:'thin', color:{rgb:'E0E0E0'} };
+    function cs(fill, font, align) {
+      return { fill, font, alignment:{ wrapText:true, vertical:'top', ...(align||{}) }, border:{ bottom:thin, right:thin } };
+    }
+    const STATUS_LABELS_XL = { none:'—', mapper:'Mapper to fix', guidance:'Need guidance', good:'Good', na:'N/A' };
+
+    // ── Sheet 1: Project Overview ─────────────────────────────
+    const overviewData = [];
+    overviewData.push([{v:proj+' — Map Cartography Review',t:'s',s:{fill:hdrFill,font:{bold:true,color:{rgb:'FFFFFF'},name:'Arial',sz:14},alignment:{horizontal:'left',vertical:'center'}}},'','','','','','']);
+    const exportedByLabel = currentMode === 'reviewer' ? 'Reviewer' : 'Mapper';
+    overviewData.push([{v:'Exported: '+ts+' by '+exportedByLabel,t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'252525'}},font:{color:{rgb:'999999'},name:'Arial',sz:9},alignment:{horizontal:'left'}}},'','','','','','']);
+    overviewData.push(['']);
+    overviewData.push([
+      {v:'Map Name',      t:'s',s:cs(hdrFill,hdrFont)},
+      {v:'Reviewer',      t:'s',s:cs(hdrFill,hdrFont)},
+      {v:'Review Date',   t:'s',s:cs(hdrFill,hdrFont)},
+      {v:'Mapper',        t:'s',s:cs(hdrFill,hdrFont)},
+      {v:'Version / File',t:'s',s:cs(hdrFill,hdrFont)},
+      {v:'Output Format', t:'s',s:cs(hdrFill,hdrFont)},
+      {v:'Progress',      t:'s',s:cs(hdrFill,hdrFont)},
+    ]);
+    state.forEach(m => {
+      const mm = mapMeta[m.mapId]||{total:0,checked:0};
+      const pct= mm.total>0?Math.round(mm.checked/mm.total*100):0;
+      const wf = {patternType:'solid',fgColor:{rgb:'FFFFFF'}};
+      overviewData.push([
+        {v:m.meta['Map title']||'Untitled map',t:'s',s:cs(wf,{bold:true,name:'Arial',sz:10})},
+        {v:m.meta['Reviewer']||'',             t:'s',s:cs(wf,rowFontNorm)},
+        {v:m.meta['Review date']||'',          t:'s',s:cs(wf,rowFontNorm)},
+        {v:m.meta['Mapper']||'',               t:'s',s:cs(wf,rowFontNorm)},
+        {v:m.meta['Version / file']||'',       t:'s',s:cs(wf,rowFontNorm)},
+        {v:m.meta['Output format']||'',        t:'s',s:cs(wf,rowFontNorm)},
+        {v:mm.checked+'/'+mm.total+' ('+pct+'%)',t:'s',s:cs(wf,{name:'Arial',sz:10,bold:true,color:{rgb:pct===100?'2E7D32':pct>0?'B07A00':'888888'}})},
+      ]);
+    });
+    const ws0 = XLSX.utils.aoa_to_sheet(overviewData);
+    ws0['!cols'] = [{wch:32},{wch:18},{wch:14},{wch:20},{wch:18},{wch:16},{wch:16}];
+    ws0['!rows'] = [{hpt:28},{hpt:16},{hpt:8},{hpt:20}];
+    ws0['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}];
+    XLSX.utils.book_append_sheet(wb, ws0, 'Project Overview');
+
+    // ── One sheet per map — dynamic audit columns ─────────────
+    state.forEach(m => {
+      const mapId  = m.mapId;
+      const history= mapExportHistory[mapId] || [];
+      const numRounds = history.length; // grow with each export
+      const totalCols = 7 + numRounds * 2;
+      const sheetName = (m.meta['Map title']||'Map').replace(/[\\\/\?\*\[\]:]/g,'').substring(0,28)||'Map';
+      const aoa = [];
+
+      // Title row
+      const titleRow = [{v:m.meta['Map title']||'Untitled map',t:'s',s:{fill:hdrFill,font:{bold:true,color:{rgb:'FFFFFF'},name:'Arial',sz:12},alignment:{horizontal:'left',vertical:'center'}}}];
+      for (let i=1;i<totalCols;i++) titleRow.push('');
+      aoa.push(titleRow);
+      aoa.push(['']);
+
+      // Meta
+      [['Reviewer',m.meta['Reviewer']||''],['Review date',m.meta['Review date']||''],['Mapper',m.meta['Mapper']||''],['Version / file',m.meta['Version / file']||''],['Output format',m.meta['Output format']||'']].forEach(([k,v])=>{
+        const row=[{v:k,t:'s',s:{fill:metaFill,font:{bold:true,name:'Arial',sz:10},alignment:{horizontal:'left'},border:{bottom:thin,right:thin}}},{v:v,t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}},font:metaFont,alignment:{horizontal:'left'},border:{bottom:thin,right:thin}}}];
+        for(let i=2;i<totalCols;i++) row.push('');
+        aoa.push(row);
+      });
+
+      const gcNote = m.generalComment||'';
+      if (gcNote) {
+        aoa.push(['']);
+        const gcRow=[{v:'General comments',t:'s',s:{fill:metaFill,font:{bold:true,name:'Arial',sz:10},alignment:{horizontal:'left'},border:{bottom:thin,right:thin}}},{v:gcNote,t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'FFFEF5'}},font:metaFont,alignment:{horizontal:'left',wrapText:true},border:{bottom:thin,right:thin}}}];
+        for(let i=2;i<totalCols;i++) gcRow.push('');
+        aoa.push(gcRow);
+      }
+      aoa.push(['']);
+
+      // Column headers — audit cols grow dynamically
+      const auditHdrFont = {bold:true,color:{rgb:'DDDDDD'},name:'Arial',sz:9};
+      const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th'];
+      const colHdrRow = [
+        {v:'✓',             t:'s',s:cs(hdrFill,hdrFont,{horizontal:'center'})},
+        {v:'Section',       t:'s',s:cs(hdrFill,hdrFont)},
+        {v:'Element',       t:'s',s:cs(hdrFill,hdrFont)},
+        {v:'Type',          t:'s',s:cs(hdrFill,hdrFont,{horizontal:'center'})},
+        {v:'Status',        t:'s',s:cs(hdrFill,hdrFont)},
+        {v:'Specs Reviewed',t:'s',s:cs(hdrFill,hdrFont)},
+        {v:'Current Note',  t:'s',s:cs(hdrFill,hdrFont)},
+      ];
+      for (let r=0; r<numRounds; r++) {
+        const rnd   = history[r];
+        const ordLabel = ordinals[r]||((r+1)+'th');
+        // Use actual name from meta; fall back to role label
+        const byName = rnd
+          ? (rnd.exportedBy === 'reviewer'
+              ? (m.meta['Reviewer'] || 'Reviewer')
+              : (m.meta['Mapper']   || 'Mapper'))
+          : '';
+        const direction = rnd
+          ? (rnd.exportedBy === 'reviewer' ? 'Review Comments' : 'Mapper Submission')
+          : 'Audit';
+        const hdrLabel = `${ordLabel} ${direction}${byName ? ' · '+byName : ''}`;
+        colHdrRow.push({v:hdrLabel,                t:'s',s:cs(auditHdrFill,auditHdrFont)});
+        colHdrRow.push({v:'Correction Date',        t:'s',s:cs(auditHdrFill,{...auditHdrFont,bold:false})});
+      }
+      aoa.push(colHdrRow);
+
+      // Section and data rows
+      const sheetEl = document.getElementById('sheet-'+mapId);
+      const sectionBlocks = sheetEl ? Array.from(sheetEl.querySelectorAll('.section-block')) : [];
+      sectionBlocks.forEach(sb => {
+        const si = parseInt(sb.getAttribute('data-si'));
+        const secDef = SECTIONS_DEF[si]; if (!secDef) return;
+        const secRowKeys = Object.keys(m.rows).filter(k=>k.startsWith(mapId+'_'+si+'_'));
+        const secStatuses = secRowKeys.map(k=>m.rows[k]?.rowStatus||'none');
+        const secStatus = secStatuses.some(s=>s==='mapper')?'mapper':secStatuses.some(s=>s==='guidance')?'guidance':secStatuses.every(s=>s==='good'||s==='none'||s==='na')&&secStatuses.some(s=>s==='good')?'good':'none';
+        const sFill=secFills[secStatus]||secFills.none, sFont=secFonts[secStatus]||secFonts.none;
+        const secRow=[{v:'',t:'s',s:{fill:sFill,font:sFont}},{v:secDef.title.toUpperCase(),t:'s',s:{fill:sFill,font:{...sFont,sz:10},alignment:{horizontal:'left',vertical:'center'}}},{v:'',t:'s',s:{fill:sFill}},{v:'',t:'s',s:{fill:sFill}},{v:STATUS_LABELS_XL[secStatus]||'—',t:'s',s:{fill:sFill,font:{...sFont,sz:9},alignment:{horizontal:'right',vertical:'center'}}},{v:'',t:'s',s:{fill:sFill}},{v:'',t:'s',s:{fill:sFill}}];
+        for(let r=0;r<numRounds;r++){secRow.push({v:'',t:'s',s:{fill:sFill}});secRow.push({v:'',t:'s',s:{fill:sFill}});}
+        aoa.push(secRow);
+
+        // Static rows
+        (secDef.isDynamic?[]:secDef.rows).forEach((row,ri)=>{
+          const rowId=`${mapId}_${si}_${ri}`;
+          const rd=m.rows[rowId]||{};
+          const isNA=!!rd.na, isChecked=!!rd.checked;
+          const specs=(rd.selected||[]).join(', '), note=rd.taValue||'';
+          const sv=isNA?'na':(rd.rowStatus||'none');
+          const rf=isNA?naFill:isChecked?checkedFill:note.trim()?notedFill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}};
+          const fn=isNA?rowFontNA:isChecked?rowFontDone:rowFontNorm;
+          const dataRow=[
+            {v:isNA?'N/A':isChecked?'✓':'',t:'s',s:cs(isNA?naFill:isChecked?checkedFill:rf,{bold:true,name:'Arial',sz:11,color:{rgb:isNA?'BBBBBB':isChecked?'2E7D32':'888888'}},{horizontal:'center'})},
+            {v:'',t:'s',s:cs(isNA?naFill:rf,fn)},
+            {v:row.name,t:'s',s:cs(isNA?naFill:rf,isNA?naFont:isChecked?rowFontDone:fn)},
+            {v:isNA?'':TAG_LABEL[row.tag]||'',t:'s',s:cs(isNA?naFill:{patternType:'solid',fgColor:{rgb:'FAFAFA'}},{name:'Arial',sz:9,color:{rgb:'888888'}},{horizontal:'center'})},
+            {v:isNA?'N/A':STATUS_LABELS_XL[sv]||'—',t:'s',s:cs(isNA?naFill:{patternType:'solid',fgColor:{rgb:'FAFAFA'}},{name:'Arial',sz:9,bold:sv!=='none'&&sv!=='na',color:{rgb:isNA?'BBBBBB':sv==='mapper'?'B05800':sv==='guidance'?'1A56B0':sv==='good'?'2E7D32':'888888'}})},
+            {v:isNA?'':specs,t:'s',s:cs(isNA?naFill:{patternType:'solid',fgColor:{rgb:'FAFAFA'}},isNA?naFont:{name:'Arial',sz:10})},
+            {v:isNA?'':note,t:'s',s:cs(isNA?naFill:note.trim()?notedFill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}},isNA?naFont:{name:'Courier New',sz:9})},
+          ];
+          for(let r=0;r<numRounds;r++){
+            const auditNote=isNA?'':( history[r]?.rows?.[rowId]?.note||'');
+            const auditDate=history[r]?.ts||'';  // always show round ts in date col
+            dataRow.push({v:auditNote,t:'s',s:cs(isNA?naFill:auditNote?{patternType:'solid',fgColor:{rgb:'FFFBF0'}}:auditFill,isNA?naFont:{name:'Arial',sz:9,color:{rgb:auditNote?'5A3A00':'BBBBBB'}})});
+            dataRow.push({v:isNA?'':auditDate,t:'s',s:cs(isNA?naFill:{patternType:'solid',fgColor:{rgb:'F5F5F0'}},isNA?naFont:{name:'Arial',sz:9,color:{rgb:'888888'}},{horizontal:'center'})});
+          }
+          aoa.push(dataRow);
+        });
+
+        // Dynamic layer rows
+        if (secDef.isDynamic) {
+          const layers=m.dynamicLayers?.[`${mapId}_${si}`]||[];
+          layers.forEach((layer,li)=>{
+            const lid=`${mapId}_${si}_L${li}`;
+            const isNA=!!layer.na, isChecked=!!layer.checked;
+            const specs=(layer.selected||[]).join(', '), note=layer.taValue||'';
+            const sv=isNA?'na':(layer.rowStatus||'none');
+            const rf=isNA?naFill:isChecked?checkedFill:note.trim()?notedFill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}};
+            const dataRow=[
+              {v:isNA?'N/A':isChecked?'✓':'',t:'s',s:cs(isChecked?checkedFill:rf,{bold:true,name:'Arial',sz:11,color:{rgb:isNA?'BBBBBB':isChecked?'2E7D32':'888888'}},{horizontal:'center'})},
+              {v:'',t:'s',s:cs(rf,rowFontNorm)},
+              {v:layer.layerName||'Unnamed layer',t:'s',s:cs(rf,isChecked?rowFontDone:rowFontNorm)},
+              {v:layer.layerType||'',t:'s',s:cs({patternType:'solid',fgColor:{rgb:'FAFAFA'}},{name:'Arial',sz:9,color:{rgb:'888888'}},{horizontal:'center'})},
+              {v:STATUS_LABELS_XL[sv]||'—',t:'s',s:cs({patternType:'solid',fgColor:{rgb:'FAFAFA'}},{name:'Arial',sz:9,color:{rgb:'888888'}})},
+              {v:specs,t:'s',s:cs({patternType:'solid',fgColor:{rgb:'FAFAFA'}},{name:'Arial',sz:10})},
+              {v:note,t:'s',s:cs(note.trim()?notedFill:{patternType:'solid',fgColor:{rgb:'FFFFFF'}},{name:'Courier New',sz:9})},
+            ];
+            for(let r=0;r<numRounds;r++){
+              const auditNote=history[r]?.rows?.[lid]?.note||'';
+              const auditDate=history[r]?.ts||'';
+              dataRow.push({v:auditNote,t:'s',s:cs(auditNote?{patternType:'solid',fgColor:{rgb:'FFFBF0'}}:auditFill,{name:'Arial',sz:9,color:{rgb:auditNote?'5A3A00':'BBBBBB'}})});
+              dataRow.push({v:auditNote?auditDate:'',t:'s',s:cs({patternType:'solid',fgColor:{rgb:'F5F5F0'}},{name:'Arial',sz:9,color:{rgb:'888888'}},{horizontal:'center'})});
+            }
+            aoa.push(dataRow);
+          });
+        }
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const auditColW = {wch:38}, dateColW = {wch:14};
+      ws['!cols'] = [{wch:4},{wch:20},{wch:22},{wch:9},{wch:14},{wch:32},{wch:36},...Array.from({length:numRounds},()=>[auditColW,dateColW]).flat()];
+      if (!ws['!merges']) ws['!merges']=[];
+      ws['!merges'].push({s:{r:0,c:0},e:{r:0,c:totalCols-1}});
+      const freezeRow = 9 + (gcNote?2:0);
+      ws['!sheetViews'] = [{state:'frozen',ySplit:freezeRow,topLeftCell:'A'+(freezeRow+1)}];
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    // ── Change Log sheet ──────────────────────────────────────
+    const clAoa = [];
+    const clHF  = {patternType:'solid',fgColor:{rgb:'1A1A1A'}};
+    const clHFnt= {bold:true,color:{rgb:'FFFFFF'},name:'Arial',sz:10};
+    const clThin= {style:'thin',color:{rgb:'E0E0E0'}};
+    function clCs(fill,font){return{fill,font,alignment:{wrapText:true,vertical:'top'},border:{bottom:clThin,right:clThin}};}
+
+    clAoa.push([{v:'Change Log — '+proj,t:'s',s:{fill:clHF,font:{bold:true,color:{rgb:'FFFFFF'},name:'Arial',sz:13},alignment:{horizontal:'left',vertical:'center'}}},'','','','','','']);
+    clAoa.push([{v:'Appended: '+ts,t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'252525'}},font:{color:{rgb:'999999'},name:'Arial',sz:9}}},'','','','','','']);
+    clAoa.push(['']);
+
+    state.forEach(m => {
+      const mapId = m.mapId;
+      const allRounds = mapExportHistory[mapId]||[];
+      if (!allRounds.length) return;
+      clAoa.push([{v:m.meta['Map title']||'Untitled',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'333333'}},font:{bold:true,color:{rgb:'FFFFFF'},name:'Arial',sz:11},alignment:{horizontal:'left',vertical:'center'}}},'','','','','','']);
+      clAoa.push([
+        {v:'Submission',     t:'s',s:clCs(clHF,clHFnt)},
+        {v:'By',             t:'s',s:clCs(clHF,clHFnt)},
+        {v:'Timestamp',      t:'s',s:clCs(clHF,clHFnt)},
+        {v:'Element',        t:'s',s:clCs(clHF,clHFnt)},
+        {v:'Status',         t:'s',s:clCs(clHF,clHFnt)},
+        {v:'Note',           t:'s',s:clCs(clHF,clHFnt)},
+        {v:'General Comment',t:'s',s:clCs(clHF,clHFnt)},
+      ]);
+      allRounds.forEach((rnd,ri) => {
+        const wf     = {patternType:'solid',fgColor:{rgb:'FFFFFF'}};
+        const rowIds = Object.keys(rnd.rows||{});
+        const statusLblMap = {none:'—',mapper:'Mapper to fix',guidance:'Need guidance',good:'Good',na:'N/A'};
+        const statusColour = s => s==='mapper'?'B05800':s==='guidance'?'1A56B0':s==='good'?'2E7D32':'888888';
+
+        // Round label: describe the direction of this submission
+        const isReviewer = rnd.exportedBy === 'reviewer';
+        const roundLabel = isReviewer
+          ? `Round ${ri+1} — Reviewer Comments`
+          : `Round ${ri+1} — Sent for Review`;
+
+        // Actual person name from meta
+        const personName = isReviewer
+          ? (m.meta['Reviewer'] || 'Reviewer')
+          : (m.meta['Mapper']   || 'Mapper');
+
+        // Row fill tint per direction
+        const rndFill = isReviewer
+          ? {patternType:'solid',fgColor:{rgb:'EEF3FF'}}
+          : {patternType:'solid',fgColor:{rgb:'FFF8F0'}};
+
+        if (!rowIds.length && !rnd.generalComment) {
+          clAoa.push([
+            {v:roundLabel,   t:'s',s:clCs(rndFill,{name:'Arial',sz:10,bold:true,color:{rgb:isReviewer?'1A56B0':'B05800'}})},
+            {v:personName,   t:'s',s:clCs(rndFill,rowFontNorm)},
+            {v:rnd.ts,       t:'s',s:clCs(rndFill,{name:'Courier New',sz:9})},
+            {v:'(no changes)',t:'s',s:clCs(rndFill,{name:'Arial',sz:10,color:{rgb:'BBBBBB'},italic:true})},
+            {v:'',t:'s',s:clCs(rndFill,rowFontNorm)},
+            {v:'',t:'s',s:clCs(rndFill,rowFontNorm)},
+            {v:'',t:'s',s:clCs(rndFill,rowFontNorm)},
+          ]);
+        } else {
+          const allItems = rowIds.length ? rowIds : [null];
+          allItems.forEach((rowId,idx)=>{
+            const h = rowId ? rnd.rows[rowId] : null;
+            const elemName    = rowId ? (h?.elemName || rowId) : '';
+            const statusLabel = h ? (statusLblMap[h.status]||h.status) : '';
+            const statusDisp  = h ? 'Changed to: '+statusLabel : '';
+            clAoa.push([
+              {v:idx===0?roundLabel:'',   t:'s',s:clCs(idx===0?rndFill:wf,{name:'Arial',sz:10,bold:idx===0,color:{rgb:isReviewer?'1A56B0':'B05800'}})},
+              {v:idx===0?personName:'',   t:'s',s:clCs(idx===0?rndFill:wf,rowFontNorm)},
+              {v:idx===0?rnd.ts:'',       t:'s',s:clCs(idx===0?rndFill:wf,{name:'Courier New',sz:9})},
+              {v:elemName,                t:'s',s:clCs(wf,{name:'Arial',sz:10})},
+              {v:statusDisp,              t:'s',s:clCs(wf,{name:'Arial',sz:10,bold:!!h,color:{rgb:h?statusColour(h.status):'888888'}})},
+              {v:h?h.note:'',             t:'s',s:clCs(wf,{name:'Courier New',sz:9})},
+              {v:idx===0?(rnd.generalComment||''):'',t:'s',s:clCs(idx===0?rndFill:wf,rowFontNorm)},
+            ]);
+          });
+        }
+      });
+      clAoa.push(['']);
+    });
+
+    const wsCL = XLSX.utils.aoa_to_sheet(clAoa);
+    wsCL['!cols'] = [{wch:10},{wch:12},{wch:16},{wch:28},{wch:20},{wch:44},{wch:40}];
+    wsCL['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}];
+    XLSX.utils.book_append_sheet(wb, wsCL, 'Change Log');
+
+    // ── 3. Trigger download ───────────────────────────────────
+    const slug = proj.replace(/[^a-z0-9]/gi,'_')||'review';
+    const wbout= XLSX.write(wb,{bookType:'xlsx',type:'array'});
+    const blob = new Blob([wbout],{type:'application/octet-stream'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download=`map_review_${slug}.xlsx`;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},300);
+
+  } catch(err) {
+    console.error('Export error:',err);
+    alert('Export failed: '+err.message);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+if(window.__RESTORE_STATE__){
+  const rs=window.__RESTORE_STATE__;
+  if(rs.project){document.getElementById('project-name').value=rs.project;updateTitle();}
+  if(rs.maps&&rs.maps.length) rs.maps.forEach(d=>addMap(d));
+  else addMap();
+}else{
+  addMap();
+}
+</script>
+</body>
+</html>
