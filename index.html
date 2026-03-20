@@ -431,18 +431,24 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .sec-done-btn { font-size:13px; font-weight:500; color:#fff; background:#1a1a1a; border:none; border-radius:5px; padding:6px 18px; cursor:pointer; font-family:inherit; }
 .sec-done-btn:hover { background:#333; }
 @media print {
-  .top-bar .btn-row, .tab-bar-wrap, .attach-panel, .map-attach-btn, .row-actions, .dd-select-all, .remove, .section-drag-handle, .section-chevron { display: none !important; }
+  .top-bar .btn-row, .tab-bar-wrap, .attach-panel, .map-attach-btn, .row-actions, .dd-select-all, .remove, .section-drag-handle, .section-chevron, .summary-strip, .general-comment-block, .row-history-cell, .sec-editor-overlay, .confirm-overlay { display: none !important; }
   body, html { height: auto; overflow: visible; }
   .app, .content-pane { height: auto; overflow: visible; }
-  .map-sheet { display: flex !important; flex-direction: column; page-break-after: always; }
-  .map-sheet:last-child { page-break-after: auto; }
+  .map-sheet { display: none !important; }
+  .map-sheet.active { display: flex !important; flex-direction: column; }
+  .map-header { border-bottom: 2px solid #1a1a1a; }
   .sections-scroll { overflow: visible; padding: 0; }
   .section-body { display: block !important; }
   .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .section-header.all-good { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #f7f7f7 !important; }
+  tbody tr.na-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .spec-dropdown { display: none !important; }
   table { page-break-inside: avoid; }
-  .section-block { page-break-inside: avoid; }
+  .section-block { page-break-inside: avoid; margin-bottom: 6px; }
+  .top-bar { display: flex !important; }
+  .top-bar .project-area { display: flex !important; }
+  .mode-toggle, .mode-badge { display: none !important; }
 }
 </style>
 </head>
@@ -604,23 +610,38 @@ const SECTIONS_DEF = [
 const TAG_CLASS = { text:'tag-text', symbol:'tag-symbol', layout:'tag-layout', data:'tag-data', export:'tag-export' };
 const TAG_LABEL = { text:'Text', symbol:'Symbol', layout:'Layout', data:'Data', export:'Export' };
 
-// ── Custom sections ───────────────────────────────────────────
-// User-defined sections appended after the built-in SECTIONS_DEF.
-// Index in the combined array = SECTIONS_DEF.length + index in customSections.
-let customSections = []; // [{id, title, rows:[{name,tag,desc,specs:[]}]}]
-// Extra rows added to built-in sections: { [si]: [{name,tag,desc,specs}] }
-let builtInExtensions = {};
+// ── Custom sections (per map tab) ────────────────────────────
+// mapCustomSections[mapId] = [{id, title, rows:[{name,tag,desc,specs:[]}]}]
+// mapBuiltInExtensions[mapId] = { [si]: [{name,tag,desc,specs}] }
+const mapCustomSections = {};
+const mapBuiltInExtensions = {};
+
+// Helpers to get/set for the active map
+function getCustomSections(mapId) { return mapCustomSections[mapId] || []; }
+function getBuiltInExts(mapId)    { return mapBuiltInExtensions[mapId] || {}; }
+function ensureMapExtStore(mapId) {
+  if (!mapCustomSections[mapId])    mapCustomSections[mapId] = [];
+  if (!mapBuiltInExtensions[mapId]) mapBuiltInExtensions[mapId] = {};
+}
+
+// Keep legacy aliases pointing at active map for all editor functions
+function getActiveMapId() { return activeMapId; }
+// Computed shorthands used throughout editor functions
+function cs_list()   { return mapCustomSections[activeMapId] || []; }
+function bi_exts()   { return mapBuiltInExtensions[activeMapId] || {}; }
+function bi_si(si)   { return (mapBuiltInExtensions[activeMapId] || {})[si] || []; }
+
 let _secEditorActive = null; // id or 'b0'..'b6'
 
 function getAllSections() {
+  const mid = activeMapId;
   return [
     ...SECTIONS_DEF,
-    ...customSections.map(cs => ({ ...cs, isCustom: true }))
+    ...(mapCustomSections[mid]||[]).map(cs => ({ ...cs, isCustom: true }))
   ];
 }
-// Get effective rows for a built-in section (core + user extensions)
 function getBuiltInRows(si) {
-  return [...(SECTIONS_DEF[si]?.rows||[]), ...(builtInExtensions[si]||[])];
+  return [...(SECTIONS_DEF[si]?.rows||[]), ...((mapBuiltInExtensions[activeMapId]||{})[si]||[])];
 }
 
 function openSectionEditor() {
@@ -634,25 +655,28 @@ function closeSectionEditor() {
 }
 
 function renderSecEditorSidebar() {
+  const mid = activeMapId;
+  const customSecs = mapCustomSections[mid] || [];
+  const biExts     = mapBuiltInExtensions[mid] || {};
   const list = document.getElementById('secEditorList');
   list.innerHTML = '';
   const biLabel = document.createElement('div');
   biLabel.className = 'sec-sidebar-label'; biLabel.textContent = 'Built-in';
   list.appendChild(biLabel);
   SECTIONS_DEF.forEach((s, i) => {
-    const extCount = (builtInExtensions[i]||[]).length;
+    const extCount = (biExts[i]||[]).length;
     const div = document.createElement('div');
     div.className = 'sec-si' + (_secEditorActive === 'b'+i ? ' active' : '');
     div.innerHTML = `<span class="sec-si-name">${s.title}</span>${extCount?`<span class="sec-si-custom">+${extCount}</span>`:'<span class="sec-si-lock">🔒</span>'}`;
     div.onclick = () => selectSecEditor('b'+i, s, false, i);
     list.appendChild(div);
   });
-  if (customSections.length) {
+  if (customSecs.length) {
     const div = document.createElement('div'); div.className = 'sec-divider'; list.appendChild(div);
     const csLabel = document.createElement('div');
     csLabel.className = 'sec-sidebar-label'; csLabel.textContent = 'Custom';
     list.appendChild(csLabel);
-    customSections.forEach(cs => {
+    customSecs.forEach(cs => {
       const div = document.createElement('div');
       div.className = 'sec-si' + (_secEditorActive === cs.id ? ' active' : '');
       div.innerHTML = `<span class="sec-si-name">${cs.title||'Untitled'}</span><span class="sec-si-custom">Custom</span>`;
@@ -674,9 +698,8 @@ function selectSecEditor(id, sec, _unused, builtInSi) {
   delBtn.style.display   = (builtInSi !== null && builtInSi !== undefined) ? 'none' : '';
 
   if (builtInSi !== null && builtInSi !== undefined) {
-    // Built-in section: show core rows (read-only) + editable extensions
     const coreRows = SECTIONS_DEF[builtInSi]?.rows || [];
-    const extRows  = builtInExtensions[builtInSi] || [];
+    const extRows  = (mapBuiltInExtensions[activeMapId]||{})[builtInSi] || [];
     const isDynamic= SECTIONS_DEF[builtInSi]?.isDynamic;
     const coreHtml = isDynamic
       ? '<div style="font-size:12px;color:#aaa;padding:8px 0 12px">Dynamic — mappers add their own data layers at review time.</div>'
@@ -687,10 +710,10 @@ function selectSecEditor(id, sec, _unused, builtInSi) {
       ${coreHtml}
       <div class="el-cards" id="elCardsPane"></div>`;
     renderElCardsBuiltIn(builtInSi);
-    // Wire add element button
     addElBtn.onclick = () => addElementToBuiltIn(builtInSi);
   } else {
-    const cs = customSections.find(s => s.id === id);
+    const customSecs = mapCustomSections[activeMapId] || [];
+    const cs = customSecs.find(s => s.id === id);
     if (!cs) return;
     pane.innerHTML = `
       <div class="sec-field-label">Section name</div>
@@ -706,7 +729,7 @@ function selectSecEditor(id, sec, _unused, builtInSi) {
 // ── Built-in section extensions ───────────────────────────────
 function renderElCardsBuiltIn(si) {
   const pane = document.getElementById('elCardsPane'); if (!pane) return;
-  const rows = builtInExtensions[si] || [];
+  const rows = (mapBuiltInExtensions[activeMapId]||{})[si] || [];
   if (!rows.length) { pane.innerHTML = '<div style="font-size:12px;color:#bbb;padding:10px 0">No custom elements added yet — click "+ Add element" below.</div>'; return; }
   pane.innerHTML = '';
   rows.forEach((row, ri) => {
@@ -739,61 +762,73 @@ function renderElCardsBuiltIn(si) {
     pane.appendChild(card);
   });
 }
-function toggleBIElCard(si,ri){if(!builtInExtensions[si])return;builtInExtensions[si][ri]._open=!builtInExtensions[si][ri]._open;renderElCardsBuiltIn(si);}
-function updateBIEl(si,ri,field,val){if(!builtInExtensions[si]||!builtInExtensions[si][ri])return;builtInExtensions[si][ri][field]=val;if(field==='tag')renderElCardsBuiltIn(si);}
+function toggleBIElCard(si,ri){
+  const mid=activeMapId; if(!(mapBuiltInExtensions[mid]||{})[si]) return;
+  mapBuiltInExtensions[mid][si][ri]._open=!mapBuiltInExtensions[mid][si][ri]._open;
+  renderElCardsBuiltIn(si);
+}
+function updateBIEl(si,ri,field,val){
+  const mid=activeMapId; if(!(mapBuiltInExtensions[mid]||{})[si]?.[ri]) return;
+  mapBuiltInExtensions[mid][si][ri][field]=val;
+  if(field==='tag') renderElCardsBuiltIn(si);
+}
 function updateBIElHeader(si,ri,val){
-  // Update just the header name span without full re-render (preserves focus)
   const span=document.querySelector(`#bielcard-${si}-${ri} .el-card-edit-name`);
   if(span) span.textContent=val||'';
-  if(builtInExtensions[si]&&builtInExtensions[si][ri]) builtInExtensions[si][ri].name=val;
+  const mid=activeMapId;
+  if((mapBuiltInExtensions[mid]||{})[si]?.[ri]) mapBuiltInExtensions[mid][si][ri].name=val;
 }
 function deleteBIEl(si,ri){
-  if(!builtInExtensions[si]) return;
-  builtInExtensions[si].splice(ri,1);
-  // Clean up rowState for the removed row and renumber subsequent rows in all maps
-  document.querySelectorAll('.map-sheet').forEach(sheet => {
-    const mapId = sheet.id.replace('sheet-','');
-    // The extension row index in allRows = SECTIONS_DEF[si].rows.length + ri
-    const coreLen = SECTIONS_DEF[si]?.rows?.length || 0;
-    const deletedRowId = `${mapId}_${si}_${coreLen + ri}`;
-    delete rowState[deletedRowId];
-    // Remove the actual DOM row so recomputeMapMeta doesn't see stale DOM
-    document.getElementById('row-'+deletedRowId)?.remove();
-    document.getElementById('histrow-'+deletedRowId)?.remove();
-    recomputeMapMeta(mapId);
-    updateTabProgress(mapId);
-  });
+  const mid=activeMapId;
+  if(!(mapBuiltInExtensions[mid]||{})[si]) return;
+  mapBuiltInExtensions[mid][si].splice(ri,1);
+  const coreLen = SECTIONS_DEF[si]?.rows?.length || 0;
+  const deletedRowId = `${mid}_${si}_${coreLen + ri}`;
+  delete rowState[deletedRowId];
+  document.getElementById('row-'+deletedRowId)?.remove();
+  document.getElementById('histrow-'+deletedRowId)?.remove();
+  recomputeMapMeta(mid);
+  updateTabProgress(mid);
   renderElCardsBuiltIn(si);
-  // Update count label
   const countLbl = document.querySelector('#secEditPane .sec-field-label span');
   if (countLbl) {
     const coreCount = SECTIONS_DEF[si]?.rows?.length || 0;
-    countLbl.textContent = `(${coreCount + (builtInExtensions[si]||[]).length})`;
+    countLbl.textContent = `(${coreCount + (mapBuiltInExtensions[mid][si]||[]).length})`;
   }
   renderSecEditorSidebar(); _secEditorActive = 'b'+si;
 }
-function addBISpec(si,ri){const inp=document.getElementById(`bispecin-${si}-${ri}`);if(!inp||!inp.value.trim())return;if(!builtInExtensions[si])builtInExtensions[si]=[];builtInExtensions[si][ri].specs.push(inp.value.trim());inp.value='';renderElCardsBuiltIn(si);}
-function removeBISpec(si,ri,spI){if(!builtInExtensions[si])return;builtInExtensions[si][ri].specs.splice(spI,1);renderElCardsBuiltIn(si);}
-function addElementToBuiltIn(si) {
-  if (!builtInExtensions[si]) builtInExtensions[si] = [];
-  builtInExtensions[si].push({ name:'', tag:'data', desc:'', specs:[], _open:true });
+function addBISpec(si,ri){
+  const mid=activeMapId;
+  const inp=document.getElementById(`bispecin-${si}-${ri}`); if(!inp||!inp.value.trim()) return;
+  if(!mapBuiltInExtensions[mid]) mapBuiltInExtensions[mid]={};
+  if(!mapBuiltInExtensions[mid][si]) mapBuiltInExtensions[mid][si]=[];
+  mapBuiltInExtensions[mid][si][ri].specs.push(inp.value.trim()); inp.value='';
   renderElCardsBuiltIn(si);
-  // Update the element count label in the pane header
+}
+function removeBISpec(si,ri,spI){
+  const mid=activeMapId; if(!(mapBuiltInExtensions[mid]||{})[si]) return;
+  mapBuiltInExtensions[mid][si][ri].specs.splice(spI,1);
+  renderElCardsBuiltIn(si);
+}
+function addElementToBuiltIn(si) {
+  const mid=activeMapId;
+  if (!mapBuiltInExtensions[mid]) mapBuiltInExtensions[mid]={};
+  if (!mapBuiltInExtensions[mid][si]) mapBuiltInExtensions[mid][si]=[];
+  mapBuiltInExtensions[mid][si].push({ name:'', tag:'data', desc:'', specs:[], _open:true });
+  renderElCardsBuiltIn(si);
   const countLbl = document.querySelector('#secEditPane .sec-field-label span');
   if (countLbl) {
     const coreCount = SECTIONS_DEF[si]?.rows?.length || 0;
-    const extCount = builtInExtensions[si].length;
+    const extCount = mapBuiltInExtensions[mid][si].length;
     countLbl.textContent = `(${coreCount + extCount})`;
   }
-  // Update sidebar badge
   renderSecEditorSidebar(); _secEditorActive = 'b'+si;
-  // Focus the new element's name input
-  const lastIdx = builtInExtensions[si].length - 1;
+  const lastIdx = mapBuiltInExtensions[mid][si].length - 1;
   setTimeout(()=>{ const inp=document.querySelector(`#bielcard-${si}-${lastIdx} .el-input`); if(inp){inp.focus();} },50);
 }
 
 function updateCustomSecTitle(id, val) {
-  const cs = customSections.find(s => s.id === id);
+  const cs = (mapCustomSections[activeMapId]||[]).find(s => s.id === id);
   if (cs) { cs.title = val; renderSecEditorSidebar(); _secEditorActive = id; }
 }
 
@@ -841,70 +876,69 @@ function renderElCards(cs) {
 }
 
 function toggleElCard(csId, ri) {
-  const cs = customSections.find(s => s.id === csId); if (!cs) return;
+  const cs = (mapCustomSections[activeMapId]||[]).find(s => s.id === csId); if (!cs) return;
   cs.rows[ri]._open = !cs.rows[ri]._open;
   renderElCards(cs);
 }
 function updateCustomEl(csId, ri, field, val) {
-  const cs = customSections.find(s => s.id === csId); if (!cs||!cs.rows[ri]) return;
+  const cs = (mapCustomSections[activeMapId]||[]).find(s => s.id === csId); if (!cs||!cs.rows[ri]) return;
   cs.rows[ri][field] = val;
   if (field === 'tag') renderElCards(cs);
 }
 function updateCustomElHeader(csId, ri, val) {
-  // Update header span live without re-rendering (preserves focus)
   const span = document.querySelector(`#elcard-${ri} .el-card-edit-name`);
   if (span) span.textContent = val || '';
-  const cs = customSections.find(s => s.id === csId);
+  const cs = (mapCustomSections[activeMapId]||[]).find(s => s.id === csId);
   if (cs && cs.rows[ri]) cs.rows[ri].name = val;
 }
 function deleteCustomEl(csId, ri) {
-  const cs = customSections.find(s => s.id === csId); if (!cs) return;
-  const ci = customSections.indexOf(cs);
+  const mid = activeMapId;
+  const cs = (mapCustomSections[mid]||[]).find(s => s.id === csId); if (!cs) return;
+  const ci = (mapCustomSections[mid]||[]).indexOf(cs);
   const si = SECTIONS_DEF.length + ci;
   cs.rows.splice(ri, 1);
-  // Clean up rowState and DOM for the removed row across all maps
-  document.querySelectorAll('.map-sheet').forEach(sheet => {
-    const mapId = sheet.id.replace('sheet-','');
-    const deletedRowId = `${mapId}_${si}_${ri}`;
-    delete rowState[deletedRowId];
-    document.getElementById('row-'+deletedRowId)?.remove();
-    document.getElementById('histrow-'+deletedRowId)?.remove();
-    recomputeMapMeta(mapId);
-    updateTabProgress(mapId);
-  });
+  const deletedRowId = `${mid}_${si}_${ri}`;
+  delete rowState[deletedRowId];
+  document.getElementById('row-'+deletedRowId)?.remove();
+  document.getElementById('histrow-'+deletedRowId)?.remove();
+  recomputeMapMeta(mid);
+  updateTabProgress(mid);
   renderElCards(cs);
   const countLbl = document.querySelector('#secEditPane .sec-field-label span');
   if (countLbl) countLbl.textContent = `(${cs.rows.length})`;
 }
 function addCustomSpec(csId, ri) {
   const input = document.getElementById('specin-'+ri); if (!input||!input.value.trim()) return;
-  const cs = customSections.find(s => s.id === csId); if (!cs||!cs.rows[ri]) return;
+  const cs = (mapCustomSections[activeMapId]||[]).find(s => s.id === csId); if (!cs||!cs.rows[ri]) return;
   cs.rows[ri].specs.push(input.value.trim()); input.value = '';
   renderElCards(cs);
 }
 function removeCustomSpec(csId, ri, si) {
-  const cs = customSections.find(s => s.id === csId); if (!cs||!cs.rows[ri]) return;
+  const cs = (mapCustomSections[activeMapId]||[]).find(s => s.id === csId); if (!cs||!cs.rows[ri]) return;
   cs.rows[ri].specs.splice(si, 1);
   renderElCards(cs);
 }
 function addElementFromEditor() {
-  const cs = customSections.find(s => s.id === _secEditorActive); if (!cs) return;
+  const mid = activeMapId;
+  const cs = (mapCustomSections[mid]||[]).find(s => s.id === _secEditorActive); if (!cs) return;
   cs.rows.push({ name:'', tag:'data', desc:'', specs:[], _open:true });
-  selectSecEditor(cs.id, cs, false);
+  selectSecEditor(cs.id, cs, false, null);
   setTimeout(()=>{ const inp=document.querySelector('.el-card-edit.open .el-input'); if(inp){inp.focus();} },50);
 }
 function addCustomSectionFromEditor() {
+  const mid = activeMapId;
+  if (!mapCustomSections[mid]) mapCustomSections[mid] = [];
   const id = 'cs-' + Date.now();
-  customSections.push({ id, title:'New section', rows:[] });
+  mapCustomSections[mid].push({ id, title:'New section', rows:[] });
   renderSecEditorSidebar();
-  selectSecEditor(id, customSections[customSections.length-1], false);
+  selectSecEditor(id, mapCustomSections[mid][mapCustomSections[mid].length-1], false, null);
   setTimeout(()=>{ const inp=document.getElementById('secNameInput'); if(inp){inp.focus();inp.select();} },50);
 }
 function deleteActiveCustomSection() {
+  const mid = activeMapId;
   if (!_secEditorActive || _secEditorActive.startsWith('b')) return;
-  // Use native confirm — avoids z-index stacking issue inside the modal
   if (!window.confirm('Remove this custom section? Any data entered for it will also be cleared.')) return;
-  customSections = customSections.filter(s => s.id !== _secEditorActive);
+  mapCustomSections[mid] = (mapCustomSections[mid]||[]).filter(s => s.id !== _secEditorActive);
   _secEditorActive = null;
   renderSecEditorSidebar();
   document.getElementById('secEditPane').innerHTML = '<div class="sec-edit-empty">Select a section to view or edit</div>';
@@ -912,54 +946,50 @@ function deleteActiveCustomSection() {
   document.getElementById('secDelBtn').style.display   = 'none';
 }
 
-// Rebuild all map sheet sections after editor closes
 function rebuildAllMapSections() {
-  document.querySelectorAll('.map-sheet').forEach(sheet => {
-    const mapId = sheet.id.replace('sheet-','');
-    const scroll = sheet.querySelector('.sections-scroll');
-    if (!scroll) return;
+  // Only rebuild the active map tab (customization is per-tab)
+  const mapId = activeMapId; if (!mapId) return;
+  const sheet = document.getElementById('sheet-'+mapId); if (!sheet) return;
+  const scroll = sheet.querySelector('.sections-scroll'); if (!scroll) return;
+  const biExts = mapBuiltInExtensions[mapId] || {};
+  const customSecs = mapCustomSections[mapId] || [];
 
-    // Rebuild built-in sections that have extensions (tear down + rebuild to get fresh allRows)
-    SECTIONS_DEF.forEach((secDef, si) => {
-      if (secDef.isDynamic) return; // dynamic sections don't use allRows
-      const existing = document.getElementById(`secblock-${mapId}-${si}`);
-      if (!existing) return;
-      // Only rebuild if this section has any extensions
-      if (!(builtInExtensions[si]||[]).length) return;
-      const wasOpen = existing.classList.contains('open');
-      // Clean up rowState for ALL rows in this section (will be re-added by buildSectionBlock)
-      const coreLen = secDef.rows.length;
-      const extLen  = (builtInExtensions[si]||[]).length;
-      for (let ri = coreLen; ri < coreLen + extLen + 5; ri++) {
-        const rowId = `${mapId}_${si}_${ri}`;
-        if (rowState[rowId]) delete rowState[rowId];
-      }
-      const newBlock = buildSectionBlock(mapId, secDef, si, null);
-      if (wasOpen) newBlock.classList.add('open');
-      scroll.replaceChild(newBlock, existing);
-    });
-
-    // Remove all custom section blocks first
-    scroll.querySelectorAll('.section-block[data-custom="true"]').forEach(b => {
-      const si = parseInt(b.getAttribute('data-si'));
-      // Clean up rowState for rows in this section
-      Object.keys(rowState).forEach(k => { if(k.startsWith(`${mapId}_${si}_`)) delete rowState[k]; });
-      b.remove();
-    });
-    // Re-add current custom sections
-    customSections.forEach((cs, ci) => {
-      const si = SECTIONS_DEF.length + ci;
-      const secDef = { title: cs.title, rows: cs.rows, isCustom: true };
-      const block = buildSectionBlock(mapId, secDef, si, null);
-      block.setAttribute('data-custom', 'true');
-      scroll.appendChild(block);
-    });
-
-    recomputeMapMeta(mapId);
-    updateTabProgress(mapId);
-    SECTIONS_DEF.forEach((_,si)=>{ const bl=document.getElementById(`secblock-${mapId}-${si}`); if(bl){updateSectionSummary(mapId,si,bl);checkSectionAllGood(mapId,si);} });
-    customSections.forEach((_,ci)=>{ const si=SECTIONS_DEF.length+ci; const bl=document.getElementById(`secblock-${mapId}-${si}`); if(bl){updateSectionSummary(mapId,si,bl);checkSectionAllGood(mapId,si);} });
+  // Rebuild built-in sections that have extensions
+  SECTIONS_DEF.forEach((secDef, si) => {
+    if (secDef.isDynamic) return;
+    const existing = document.getElementById(`secblock-${mapId}-${si}`); if (!existing) return;
+    if (!(biExts[si]||[]).length) return;
+    const wasOpen = existing.classList.contains('open');
+    const coreLen = secDef.rows.length;
+    const extLen  = (biExts[si]||[]).length;
+    for (let ri = coreLen; ri < coreLen + extLen + 5; ri++) {
+      const rowId = `${mapId}_${si}_${ri}`;
+      if (rowState[rowId]) delete rowState[rowId];
+    }
+    const newBlock = buildSectionBlock(mapId, secDef, si, null);
+    if (wasOpen) newBlock.classList.add('open');
+    scroll.replaceChild(newBlock, existing);
   });
+
+  // Remove all custom section blocks for this map
+  scroll.querySelectorAll('.section-block[data-custom="true"]').forEach(b => {
+    const si = parseInt(b.getAttribute('data-si'));
+    Object.keys(rowState).forEach(k => { if(k.startsWith(`${mapId}_${si}_`)) delete rowState[k]; });
+    b.remove();
+  });
+  // Re-add current custom sections for this map
+  customSecs.forEach((cs, ci) => {
+    const si = SECTIONS_DEF.length + ci;
+    const secDef = { title: cs.title, rows: cs.rows, isCustom: true };
+    const block = buildSectionBlock(mapId, secDef, si, null);
+    block.setAttribute('data-custom', 'true');
+    scroll.appendChild(block);
+  });
+
+  recomputeMapMeta(mapId);
+  updateTabProgress(mapId);
+  SECTIONS_DEF.forEach((_,si)=>{ const bl=document.getElementById(`secblock-${mapId}-${si}`); if(bl){updateSectionSummary(mapId,si,bl);checkSectionAllGood(mapId,si);} });
+  customSecs.forEach((_,ci)=>{ const si=SECTIONS_DEF.length+ci; const bl=document.getElementById(`secblock-${mapId}-${si}`); if(bl){updateSectionSummary(mapId,si,bl);checkSectionAllGood(mapId,si);} });
 }
 
 let mapCounter = 0, activeMapId = null;
@@ -1453,7 +1483,7 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
     <div class="section-drag-handle" title="Drag to reorder"><span></span><span></span><span></span></div>
     <div class="section-title">${secDef.title}</div>
     <span class="section-spacer"></span>
-    <span class="section-summary" id="secsummary-${mapId}-${si}">0/${secDef.isDynamic ? 0 : (secDef.rows.length + ((!secDef.isCustom && si < SECTIONS_DEF.length) ? (builtInExtensions[si]||[]).length : 0))}</span>
+    <span class="section-summary" id="secsummary-${mapId}-${si}">0/${secDef.isDynamic ? 0 : (secDef.rows.length + ((!secDef.isCustom && si < SECTIONS_DEF.length) ? ((mapBuiltInExtensions[mapId]||{})[si]||[]).length : 0))}</span>
     <span class="section-chevron">▼</span>`;
   block.appendChild(header);
 
@@ -1564,7 +1594,7 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
     const tbody = document.createElement('tbody');
 
     // Merge core rows with any built-in extensions for this section index
-    const extRows = (!secDef.isCustom && si < SECTIONS_DEF.length) ? (builtInExtensions[si]||[]) : [];
+    const extRows = (!secDef.isCustom && si < SECTIONS_DEF.length) ? ((mapBuiltInExtensions[mapId]||{})[si]||[]) : [];
     const allRows = [...(secDef.rows||[]), ...extRows];
 
     allRows.forEach((row, ri) => {
@@ -1635,6 +1665,10 @@ function addMap(restoreData) {
   if (!mapExportHistory[mapId]) mapExportHistory[mapId] = [];
   if (restoreData?.exportHistory) mapExportHistory[mapId] = restoreData.exportHistory;
   if (restoreData?.mode) applyModeFromState(restoreData.mode);
+  // Per-map section customization
+  ensureMapExtStore(mapId);
+  if (restoreData?.mapCustomSections)    mapCustomSections[mapId]    = restoreData.mapCustomSections;
+  if (restoreData?.mapBuiltInExtensions) mapBuiltInExtensions[mapId] = restoreData.mapBuiltInExtensions;
 
   const sheet = document.createElement('div');
   sheet.className='map-sheet'; sheet.id='sheet-'+mapId;
@@ -1723,8 +1757,9 @@ function addMap(restoreData) {
     const block = buildSectionBlock(mapId, secDef, si, restoreData);
     scroll.appendChild(block);
   });
-  // Custom sections (appended after built-ins, not drag-reorderable for simplicity)
-  customSections.forEach((cs, ci) => {
+  // Custom sections for this map tab
+  const customSecs = mapCustomSections[mapId] || [];
+  customSecs.forEach((cs, ci) => {
     const si = SECTIONS_DEF.length + ci;
     const secDef = { title: cs.title, rows: cs.rows, isCustom: true };
     const block = buildSectionBlock(mapId, secDef, si, restoreData);
@@ -1749,7 +1784,7 @@ function addMap(restoreData) {
     if(block) updateSectionSummary(mapId, si, block);
     checkSectionAllGood(mapId, si);
   });
-  customSections.forEach((_,ci)=>{
+  customSecs.forEach((_,ci)=>{
     const si=SECTIONS_DEF.length+ci;
     const block=document.getElementById(`secblock-${mapId}-${si}`);
     if(block) updateSectionSummary(mapId, si, block);
@@ -1961,24 +1996,25 @@ function collectState() {
     const attachedFile=mapAttach[mapId]||null;
     const exportHistory=mapExportHistory[mapId]||[];
     const generalComment=document.getElementById('gcta-'+mapId)?.value||'';
-    maps.push({mapId,meta,rows,sectionOrder,sectionOpen,dynamicLayers,attachedFile,exportHistory,generalComment,mode:currentMode});
+    // Per-map section customization — strip _open before saving
+    const mapCustomSectionsClean = (mapCustomSections[mapId]||[]).map(cs=>({
+      ...cs, rows: cs.rows.map(({_open,...r})=>r)
+    }));
+    const mapBuiltInExtensionsClean = {};
+    Object.entries(mapBuiltInExtensions[mapId]||{}).forEach(([si,rows])=>{
+      mapBuiltInExtensionsClean[si] = rows.map(({_open,...r})=>r);
+    });
+    maps.push({mapId,meta,rows,sectionOrder,sectionOpen,dynamicLayers,attachedFile,exportHistory,generalComment,mode:currentMode,mapCustomSections:mapCustomSectionsClean,mapBuiltInExtensions:mapBuiltInExtensionsClean});
   });
   // Strip internal _open flag from custom section rows before serialising
-  const customSectionsClean = customSections.map(cs=>({
-    ...cs, rows: cs.rows.map(({_open,...r})=>r)
-  }));
-  const builtInExtensionsClean = {};
-  Object.entries(builtInExtensions).forEach(([si, rows])=>{
-    builtInExtensionsClean[si] = rows.map(({_open,...r})=>r);
-  });
-  return { maps, customSections: customSectionsClean, builtInExtensions: builtInExtensionsClean };
+  return { maps };
 }
 
 // ── Save HTML ─────────────────────────────────────────────────
 function saveHTML() {
-  const {maps,customSections:cs}=collectState();
+  const {maps}=collectState();
   const proj=document.getElementById('project-name').value;
-  const payload=JSON.stringify({maps,customSections:cs,project:proj}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
+  const payload=JSON.stringify({maps,project:proj}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
   const clone = document.documentElement.cloneNode(true);
   const cp = clone.querySelector('#content-pane'); if (cp) cp.innerHTML = '';
   const tb = clone.querySelector('#tab-bar');
@@ -2061,7 +2097,7 @@ function saveExcel() {
     // ── 2. Build workbook ─────────────────────────────────────
     const wb   = XLSX.utils.book_new();
     const proj = document.getElementById('project-name').value.trim() || 'Untitled Project';
-    const {maps:state}= collectState();
+    const {maps:state}=collectState();
 
     // Style helpers
     const hdrFill    = { patternType:'solid', fgColor:{rgb:'1A1A1A'} };
@@ -2187,10 +2223,11 @@ function saveExcel() {
       sectionBlocks.forEach(sb => {
         const si = parseInt(sb.getAttribute('data-si'));
         // Resolve section definition — built-in or custom
+        const mapCustomSecs = m.mapCustomSections || [];
         const secDef = si < SECTIONS_DEF.length
           ? SECTIONS_DEF[si]
-          : customSections[si - SECTIONS_DEF.length]
-            ? { ...customSections[si - SECTIONS_DEF.length], isCustom: true }
+          : mapCustomSecs[si - SECTIONS_DEF.length]
+            ? { ...mapCustomSecs[si - SECTIONS_DEF.length], isCustom: true }
             : null;
         if (!secDef) return;
         const secRowKeys = Object.keys(m.rows).filter(k=>k.startsWith(mapId+'_'+si+'_'));
@@ -2201,8 +2238,11 @@ function saveExcel() {
         for(let r=0;r<numRounds;r++){secRow.push({v:'',t:'s',s:{fill:sFill}});secRow.push({v:'',t:'s',s:{fill:sFill}});}
         aoa.push(secRow);
 
-        // Static rows
-        (secDef.isDynamic?[]:secDef.rows).forEach((row,ri)=>{
+        // Static rows — merge built-in extensions from this map's saved state
+        const mapBIExts = m.mapBuiltInExtensions || {};
+        const xlExtRows = (!secDef.isCustom && si < SECTIONS_DEF.length) ? (mapBIExts[si]||[]) : [];
+        const xlAllRows = secDef.isDynamic ? [] : [...(secDef.rows||[]), ...xlExtRows];
+        xlAllRows.forEach((row,ri)=>{
           const rowId=`${mapId}_${si}_${ri}`;
           const rd=m.rows[rowId]||{};
           const isNA=!!rd.na, isChecked=!!rd.checked;
@@ -2371,8 +2411,6 @@ function saveExcel() {
 if(window.__RESTORE_STATE__){
   const rs=window.__RESTORE_STATE__;
   if(rs.project){document.getElementById('project-name').value=rs.project;updateTitle();}
-  if(rs.customSections&&rs.customSections.length) customSections=rs.customSections;
-  if(rs.builtInExtensions) builtInExtensions=rs.builtInExtensions;
   if(rs.maps&&rs.maps.length) rs.maps.forEach(d=>addMap(d));
   else addMap();
 }else{
