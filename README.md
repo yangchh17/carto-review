@@ -32,7 +32,7 @@ This tool makes the review file the source of truth. Every round of comments is 
 
 ### Core workflow
 - **Mapper / Reviewer mode toggle** — set who is currently filling in the form; the mode is saved into the HTML so the file remembers when re-opened
-- **Save HTML** — checkpoints the entire state (all maps, all notes, full history) into a self-restoring file you can email, commit, or share
+- **Save HTML** — checkpoints the entire state (all maps, all notes, full history) into a self-restoring file you can email, commit, or share; also stamps a timestamped entry into the note history for every field that has content
 - **Save Excel** — exports a formatted workbook with one sheet per map, a Project Overview tab, and an accumulating Change Log
 - **Save PDF** — prints the active tab or all tabs, selectable via a dropdown
 
@@ -41,20 +41,42 @@ This tool makes the review file the source of truth. Every round of comments is 
 - **Dynamic symbology section** — add one row per data layer with name, geometry type (point / line / polygon / raster), spec selectors, and notes
 - **Status per element**: Mapper to fix · Need guidance · Good · Unset
 - **Specs reviewed** — multi-select pill selector scoped to each element's relevant properties
-- **N/A toggle** — locks the row (grey background, all inputs disabled) while keeping it visible; N/A rows are greyed out in Excel too
+- **N/A toggle** — sits below the status dropdown; locks the row (grey background, all inputs disabled) while keeping it visible; N/A rows are greyed out in Excel too
+- **× button** — top-right of the note field, clears the note and resets the row
+
+### Note history (new in v1.1)
+Every note field has a collapsible **Note history** panel that appears as soon as you start typing:
+
+- **Last edited row** (amber) — always reflects whatever is currently in the textarea, live as you type, tagged with the active role (Mapper / Reviewer)
+- **Saved entries** — one entry stamped per Save HTML, growing list, newest first, each with timestamp and role tag
+- Panel is hidden when the field is empty; auto-expands on first keystroke
+
+The **General comments** box per map works identically — a "Previous notes" toggle with the same live + saved structure.
+
+### Changes summary
+- Live count of all flagged or noted rows (excludes Good), shown in a collapsible strip below the general comment
+- Shows **Field**, **Status**, **By** (Mapper or Reviewer), and full note text
+- Updates live as you type
+- **✓ Rectified** button removes a row from the summary while preserving its full history
+
+### Change Log viewer (new in v1.1)
+Click **Change Log** in the top bar to open an in-app history modal without opening Excel. Per map it shows:
+
+1. **Current session** — live view of everything currently typed across all note fields; updates in real time while the modal is open
+2. **Saved note history** — all Save HTML stamps across all fields, with timestamp and role
+3. **Export rounds** — all Save Excel rounds with element status and notes
 
 ### Custom sections (per map tab)
-- **⚙ Sections** button opens a full section editor modal
+- **Sections** button opens a full section editor modal
 - Add extra elements to any built-in section (e.g. add "Coordinate system" to Base Layer)
 - Create entirely new custom sections with custom elements, tags, descriptions, and specs
 - Customizations are **per map tab** — each tab can have a different checklist structure
 - All customizations persist through Save HTML and export correctly to Excel
 
-### Audit history
-- **Per-round history** under each element — collapsed by default, expands to show every export round with timestamp, note, and status chip
-- **Direction label per round** — "Sent for review" (mapper) or "Reviewer comments" (reviewer), with the person's name from the meta fields
-- **General comment box** per map (collapsed by default) with its own history of previous rounds
-- **Changes summary strip** — live count of flagged items (excludes Good), with a Rectified button that removes items from the summary while preserving full history
+### Audit history (per export round)
+- **Per-round history** under each element — expands to show every Save Excel round with round number, timestamp, direction chip, person name, note, and status; all on one row
+- **General comment** per map with its own previous-notes history
+- History is read-only — past entries are never modified
 
 ### Multi-map support
 - Unlimited map tabs per project
@@ -67,7 +89,7 @@ This tool makes the review file the source of truth. Every round of comments is 
 - **One sheet per map** — columns: ✓ | Section | Element | Type | Status | Specs Reviewed | Current Note | audit history columns (grow automatically with each export)
 - **Audit column headers** include direction and person name: `1st Mapper Submission · CY` / `1st Review Comments · JS`
 - **N/A rows** rendered in grey across all columns
-- **Change Log sheet** — every Save Excel appends a timestamped block per map showing which elements changed, the new status ("Changed to: Mapper to fix"), and the note; colour-coded by mapper (orange) vs reviewer (blue)
+- **Change Log sheet** — every Save Excel appends a timestamped block per map showing which elements changed, the new status, and the note; colour-coded by mapper (orange) vs reviewer (blue)
 
 ---
 
@@ -85,22 +107,29 @@ This tool makes the review file the source of truth. Every round of comments is 
 2. Sends the `.html` file to the reviewer
 3. **Reviewer** opens it, switches mode to **Reviewer**, adds comments per element
 4. Reviewer clicks **Save Excel** to generate the audit record, then **Save HTML** to send back
-5. Mapper opens the returned file — all previous rounds are visible in each element's history
+5. Mapper opens the returned file — all previous rounds are visible in each element's history, and all notes carry their full Save HTML history
+
+### Reading note history
+Each note field shows a **Note history** toggle below it once content is entered. Expand it to see:
+- The current live note (amber, "Last edited") — updates as you type
+- All previously saved versions with timestamp and who wrote them (Mapper / Reviewer)
+
+### Reading export round history
+Click the clock icon row below any element to expand its export history. Each round shows:
+- Round number, timestamp, direction ("Sent for review" / "Reviewer comments"), and person name — all on one line
+- The note recorded at time of export
+- Status at that point
+
+### Using the Change Log
+Click **Change Log** in the top bar at any time to see the full history for all maps in one view — current unsaved session, Save HTML stamps, and Save Excel rounds.
 
 ### Adding custom sections or fields
-1. Click the **⚙ Sections** button in the top bar
+1. Click the **Sections** button in the top bar
 2. Select a built-in section to add extra elements to it, or click **+ Add custom section** for a new one
 3. For each element, set the name, tag, description, and specs list
 4. Click **Done** — the checklist updates immediately
 
 > Custom sections and extra fields apply to the currently active map tab only. Different maps in the same project can have different checklist structures.
-
-### Reading the element history
-Click the clock icon under any element row to expand its history. Each export round shows:
-- Round number and timestamp
-- The note written at time of export
-- Status at that point (e.g. Mapper to fix → Good)
-- Who submitted it and in which direction
 
 ---
 
@@ -122,7 +151,8 @@ Click the clock icon under any element row to expand its history. Each export ro
 
 - **Single file, zero runtime dependencies** — the XLSX export library loads from a CDN (`cdn.jsdelivr.net`); everything else is vanilla HTML / CSS / JS
 - **No data leaves the browser** — all state lives in memory and is serialised into the saved HTML file; nothing is sent to any server
-- **State persistence** — Save HTML serialises the full application state (maps, rows, history, mode, custom sections, attached files) into a `<script>` block in the saved file; opening the file restores everything automatically
+- **State persistence** — Save HTML serialises the full application state (maps, rows, note histories, export rounds, mode, custom sections, attached files) into a `<script>` block in the saved file; opening the file restores everything automatically
+- **Note history** is stored separately from export rounds — Save HTML stamps build a continuous record independent of Save Excel
 - **Attached files** are base64-encoded into the saved HTML — large PDFs will increase file size noticeably
 - Tested in Chrome 120+, Edge 120+, Firefox 121+
 
