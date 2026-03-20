@@ -86,7 +86,7 @@ html, body { height: 100%; font-family: 'Segoe UI', Arial, sans-serif; font-size
 .gc-history-wrap.open .gc-history-chevron { transform: rotate(180deg); }
 .gc-history-body { display: none; margin-top: 5px; border: 1px solid #eee; border-radius: 5px; overflow: hidden; }
 .gc-history-wrap.open .gc-history-body { display: block; }
-.gc-hist-row { display: grid; grid-template-columns: 90px 105px 1fr; gap: 0 8px; font-size: 11px; border-bottom: 1px solid #f2f2f0; padding: 5px 10px; align-items: start; }
+.gc-hist-row { display: grid; grid-template-columns: 58px 96px 1fr; gap: 0 6px; font-size: 11px; border-bottom: 1px solid #f2f2f0; padding: 5px 10px; align-items: center; }
 .gc-hist-row:last-child { border-bottom: none; }
 .gc-hist-round { font-weight: 600; color: #1a1a1a; font-size: 10.5px; }
 .gc-hist-ts { font-size: 10px; font-family: 'Courier New', monospace; color: #bbb; padding-top: 1px; }
@@ -218,16 +218,17 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .layer-type-select.ltype-polygon { background-color: #e8f5e9; color: #2e7d32; border-color: #80c880; }
 .layer-type-select.ltype-raster  { background-color: #f3e8fd; color: #6a1b9a; border-color: #c090e0; }
 
-.changes-cell { display: flex; flex-direction: column; gap: 4px; }
+.changes-cell { display: flex; flex-direction: column; gap: 2px; }
 .changes-textarea { width: 100%; min-height: 50px; border: 1px solid #e8e8e8; border-radius: 5px; padding: 5px 7px; font-size: 11px; font-family: 'Courier New', monospace; color: #1a1a1a; resize: vertical; background: #fafafa; outline: none; line-height: 1.65; }
 .changes-textarea:focus { border-color: #888; background: #fff; }
 .changes-textarea.has-content { background: #fffef5; border-color: #c8b86a; }
-.row-actions { display: flex; gap: 7px; align-items: center; }
+.row-actions { display: flex; gap: 6px; align-items: center; }
 .na-btn { font-size: 10px; color: #bbb; background: none; border: 1px solid #eee; border-radius: 4px; padding: 2px 7px; cursor: pointer; font-family: inherit; }
 .na-btn:hover { border-color: #aaa; color: #555; }
 .na-btn.active { background: #f5f5f5; color: #888; border-color: #ccc; }
 .clear-btn { font-size: 10px; color: #ddd; background: none; border: none; cursor: pointer; font-family: inherit; }
 .clear-btn:hover { color: #888; }
+.note-meta-row { display: flex; align-items: center; gap: 8px; min-height: 18px; }
 
 /* ── Per-row history ── */
 .row-history-cell { padding: 0 !important; border-bottom: 1px solid #f0f0f0; }
@@ -269,8 +270,10 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .summary-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .summary-table td { padding: 3px 8px 3px 0; vertical-align: top; color: #555; }
 .summary-table td:first-child { width: 20%; font-weight: 500; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
-.summary-table td:nth-child(2) { width: 12%; white-space: nowrap; }
-.summary-table td:last-child { color: #666; font-family: 'Courier New', monospace; font-size: 10.5px; padding-right: 0; }
+.summary-table td:nth-child(2) { width: 10%; white-space: nowrap; }
+.summary-table td:nth-child(3) { width: 9%; white-space: nowrap; }
+.summary-table td:nth-child(4) { color: #555; white-space: normal; word-break: break-word; }
+.summary-table td:last-child { padding-right: 0; white-space: nowrap; }
 .summary-table tr { border-bottom: 1px solid #f0f0f0; }
 .summary-table tr:last-child { border-bottom: none; }
 .sst-mapper   { color: #b05800; font-weight: 600; }
@@ -355,7 +358,7 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .mode-badge.reviewer-badge { background: rgba(26,86,176,0.18);  color: #5b8edf; border: 1px solid rgba(26,86,176,0.35); }
 
 /* ── Note author label ── */
-.note-author { font-size: 9.5px; color: #bbb; margin-top: 2px; font-style: italic; min-height: 14px; transition: color 0.2s; }
+.note-author { font-size: 9.5px; color: #bbb; font-style: italic; transition: color 0.2s; }
 .note-author.by-mapper   { color: #c8762a; }
 .note-author.by-reviewer { color: #1a56b0; }
 
@@ -440,6 +443,62 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .sec-add-el-btn:hover { background:#f0f0f0; }
 .sec-done-btn { font-size:13px; font-weight:500; color:#fff; background:#1a1a1a; border:none; border-radius:5px; padding:6px 18px; cursor:pointer; font-family:inherit; }
 .sec-done-btn:hover { background:#333; }
+/* ── Inline note history (per row + GC) ── */
+.note-hist-wrap { margin-top: 2px; display: none; }
+.note-hist-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: #aaa; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+.note-hist-toggle:hover { color: #555; }
+.note-hist-chevron { font-size: 9px; transition: transform .15s; }
+.note-hist-wrap.open .note-hist-chevron { transform: rotate(180deg); }
+.note-hist-body { display: none; margin-top: 4px; border: 1px solid #eee; border-radius: 5px; overflow: hidden; }
+.note-hist-wrap.open .note-hist-body { display: block; }
+.nh-row { display: grid; grid-template-columns: 58px 96px 1fr; gap: 0 6px; font-size: 10.5px; border-bottom: 1px solid #f2f2f0; padding: 4px 8px; align-items: center; }
+.nh-row:last-child { border-bottom: none; }
+.nh-ts { font-size: 10px; font-family: 'Courier New', monospace; color: #bbb; }
+.nh-val { color: #555; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.nh-empty { font-size: 10.5px; color: #ccc; font-style: italic; padding: 5px 8px; }
+
+/* ── Change Log modal ── */
+.cl-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; align-items:flex-start; justify-content:center; padding:40px 20px; overflow-y:auto; }
+.cl-overlay.visible { display:flex; }
+.cl-modal { background:#fff; border-radius:10px; width:900px; max-width:96vw; box-shadow:0 16px 60px rgba(0,0,0,.3); overflow:hidden; display:flex; flex-direction:column; max-height:calc(100vh - 80px); }
+.cl-modal-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid #eee; flex-shrink:0; background:#1a1a1a; }
+.cl-modal-title { font-size:14px; font-weight:600; color:#fff; flex:1; }
+.cl-modal-close { font-size:18px; background:none; border:none; cursor:pointer; color:#888; line-height:1; padding:2px 6px; border-radius:4px; }
+.cl-modal-close:hover { background:#2e2e2e; color:#fff; }
+.cl-modal-body { flex:1; overflow-y:auto; padding:20px; }
+.cl-empty { text-align:center; padding:60px 20px; font-size:13px; color:#bbb; }
+
+/* Per-map block */
+.cl-map-block { margin-bottom:28px; }
+.cl-map-title { font-size:13px; font-weight:700; color:#1a1a1a; border-bottom:2px solid #1a1a1a; padding-bottom:6px; margin-bottom:12px; }
+
+/* Round header */
+.cl-round-hdr { display:flex; align-items:center; gap:8px; padding:7px 12px; border-radius:6px 6px 0 0; margin-top:10px; }
+.cl-round-hdr.dir-reviewer { background:#EEF3FF; border:1px solid #c0d0f0; border-bottom:none; }
+.cl-round-hdr.dir-mapper   { background:#FFF8F0; border:1px solid #f0d0a0; border-bottom:none; }
+.cl-round-label { font-size:11px; font-weight:700; flex:1; }
+.cl-round-label.dir-reviewer { color:#1A56B0; }
+.cl-round-label.dir-mapper   { color:#B05800; }
+.cl-round-person { font-size:10.5px; color:#888; }
+.cl-round-ts { font-size:10px; color:#bbb; font-family:'Courier New',monospace; }
+
+/* Round body table */
+.cl-round-body { border:1px solid #e0e0e0; border-radius:0 0 6px 6px; overflow:hidden; }
+.cl-table { width:100%; border-collapse:collapse; font-size:11.5px; }
+.cl-table th { background:#f7f7f7; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:#999; padding:5px 10px; text-align:left; border-bottom:1px solid #eee; }
+.cl-table td { padding:6px 10px; border-bottom:1px solid #f2f2f0; vertical-align:top; color:#444; }
+.cl-table tr:last-child td { border-bottom:none; }
+.cl-table tr:hover td { background:#fafafa; }
+.cl-el-name { font-weight:500; color:#1a1a1a; }
+.cl-note { font-family:'Courier New',monospace; font-size:11px; color:#555; white-space:pre-wrap; }
+.cl-status-chip { display:inline-flex; align-items:center; font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; }
+.cl-chip-mapper   { background:#fff3e8; color:#b05800; border:1px solid #e0a060; }
+.cl-chip-guidance { background:#e8f0fe; color:#1a56b0; border:1px solid #90b8f0; }
+.cl-chip-good     { background:#e8f5e9; color:#2e7d32; border:1px solid #80c880; }
+.cl-chip-none     { background:#f0f0f0; color:#aaa;    border:1px solid #ddd; }
+.cl-no-changes    { font-size:11px; color:#bbb; font-style:italic; padding:8px 10px; }
+.cl-gc-row { background:#fafaf8; border-top:1px dashed #e8e8e5; }
+.cl-gc-row td:first-child { color:#888; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
 @media print {
   /* Hide all non-content UI */
   .top-bar .btn-row,
@@ -455,6 +514,7 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
   .general-comment-block,
   .row-history-cell,
   .sec-editor-overlay,
+  .cl-overlay,
   .confirm-overlay,
   .mode-toggle,
   .mode-badge,
@@ -519,6 +579,10 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
         <button class="mode-btn" id="mode-btn-reviewer" onclick="setMode('reviewer')">Reviewer</button>
       </div>
       <span class="mode-badge" id="mode-badge" style="display:none"></span>
+      <button class="btn btn-ghost" onclick="openChangeLog()">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Change Log
+      </button>
       <button class="btn btn-ghost" id="sections-btn" onclick="openSectionEditor()">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         Sections
@@ -590,6 +654,19 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
     </div>
   </div>
   <input type="file" id="file-input" accept=".pdf,image/*" onchange="handleFileUpload(event)">
+</div>
+
+<!-- Change Log modal -->
+<div class="cl-overlay" id="cl-overlay" onclick="if(event.target===this)closeChangeLog()">
+  <div class="cl-modal">
+    <div class="cl-modal-header">
+      <span class="cl-modal-title">Change Log</span>
+      <button class="cl-modal-close" onclick="closeChangeLog()">×</button>
+    </div>
+    <div class="cl-modal-body" id="cl-modal-body">
+      <div class="cl-empty">No export history yet. Save Excel to start tracking rounds.</div>
+    </div>
+  </div>
 </div>
 
 <!-- Section editor modal -->
@@ -708,6 +785,10 @@ function getBuiltInRows(si) {
 }
 
 function openSectionEditor() {
+  _secEditorActive = null;
+  document.getElementById('secEditPane').innerHTML = '<div class="sec-edit-empty">Select a section to view or edit</div>';
+  document.getElementById('secAddElBtn').style.display = 'none';
+  document.getElementById('secDelBtn').style.display   = 'none';
   renderSecEditorSidebar();
   document.getElementById('sec-editor-overlay').classList.add('visible');
 }
@@ -860,6 +941,7 @@ function deleteBIEl(si,ri){
     countLbl.textContent = `(${coreCount + (mapBuiltInExtensions[mid][si]||[]).length})`;
   }
   renderSecEditorSidebar(); _secEditorActive = 'b'+si;
+  updateSectionsBtnBadge();
 }
 function addBISpec(si,ri){
   const mid=activeMapId;
@@ -887,6 +969,7 @@ function addElementToBuiltIn(si) {
     countLbl.textContent = `(${coreCount + extCount})`;
   }
   renderSecEditorSidebar(); _secEditorActive = 'b'+si;
+  updateSectionsBtnBadge();
   const lastIdx = mapBuiltInExtensions[mid][si].length - 1;
   setTimeout(()=>{ const inp=document.querySelector(`#bielcard-${si}-${lastIdx} .el-input`); if(inp){inp.focus();} },50);
 }
@@ -1082,6 +1165,9 @@ let mapCounter = 0, activeMapId = null;
 const rowState = {}, mapMeta = {}, mapAttach = {}, mapSectionOrder = {};
 // Export history per map: [{round, ts, rows:{[rowId]:{status,note}}, generalComment, exportedBy}]
 const mapExportHistory = {};
+// Live note history: rowNoteHistory[rowId] = [{ts, value}], mapGCNoteHistory[mapId] = [{ts, value}]
+const rowNoteHistory = {};
+const mapGCNoteHistory = {};
 
 // ── Mode (Mapper / Reviewer) ──────────────────────────────────
 let currentMode = 'mapper'; // 'mapper' | 'reviewer'
@@ -1429,7 +1515,7 @@ function switchTab(mapId) {
   document.getElementById('tab-'+mapId)?.classList.add('active');
   activeMapId=mapId;
   if(panelOpen && panelMapId !== mapId) closePanel();
-  // Refresh section editor sidebar if open, so it reflects the new tab's customizations
+  // Refresh section editor sidebar AND reset pane if open
   if (document.getElementById('sec-editor-overlay')?.classList.contains('visible')) {
     _secEditorActive = null;
     renderSecEditorSidebar();
@@ -1439,6 +1525,15 @@ function switchTab(mapId) {
   }
   // Update Sections button badge to show custom count for this tab
   updateSectionsBtnBadge();
+}
+
+// Refresh sidebar counts + badge whenever a structural change is made (add/remove element/section).
+// This ensures the sidebar counts stay accurate without resetting the active selection.
+function refreshSecEditorSidebarCounts() {
+  updateSectionsBtnBadge();
+  if (document.getElementById('sec-editor-overlay')?.classList.contains('visible')) {
+    renderSecEditorSidebar();
+  }
 }
 
 function updateSectionsBtnBadge() {
@@ -1555,22 +1650,142 @@ function toggleRowHistory(rowId) {
   if (wrap) wrap.classList.toggle('open');
 }
 
-// ── General comment history ───────────────────────────────────
-function renderGCHistory(mapId) {
-  const body = document.getElementById('gcbody-' + mapId);
-  const label = document.getElementById('gctoglabel-' + mapId);
-  if (!body || !label) return;
-  const rounds = (mapExportHistory[mapId] || []).filter(r => r.generalComment && r.generalComment.trim());
-  if (rounds.length === 0) { label.textContent = 'No previous rounds'; body.innerHTML = ''; return; }
-  label.textContent = `Show ${rounds.length} previous round${rounds.length>1?'s':''}`;
-  body.innerHTML = rounds.map(r => `<div class="gc-hist-row"><span class="gc-hist-round">${r.round}</span><span class="gc-hist-ts">${r.ts}</span><span class="gc-hist-note">${r.generalComment}</span></div>`).join('');
+// ── General comment live note history ────────────────────────
+function recordGCNote(mapId, value) {
+  const v = value.trim();
+  if (!v) return;
+  if (!mapGCNoteHistory[mapId]) mapGCNoteHistory[mapId] = [];
+  mapGCNoteHistory[mapId].push({ ts: getModeTs(), value: v, by: currentMode });
 }
+
+function renderGCHistory(mapId, fromInput) {
+  const body  = document.getElementById('gcbody-' + mapId);
+  const label = document.getElementById('gctoglabel-' + mapId);
+  const wrap  = document.getElementById('gcwrap-' + mapId);
+  if (!body || !label) return;
+  const hist = mapGCNoteHistory[mapId] || [];
+
+  const currentVal = (document.getElementById('gcta-'+mapId)?.value || '').trim();
+
+  // Nothing to show
+  if (!hist.length && !currentVal) {
+    label.textContent = 'No previous notes';
+    body.innerHTML = '';
+    return;
+  }
+
+  // Auto-expand only when triggered by user typing
+  if (fromInput && wrap && !wrap.classList.contains('open')) {
+    wrap.classList.add('open');
+  }
+  if (fromInput && document.getElementById('cl-overlay')?.classList.contains('visible')) renderChangeLog();
+
+  const isOpen = wrap?.classList.contains('open');
+  const savedCount = hist.length;
+  label.textContent = isOpen ? 'Hide previous notes'
+    : (savedCount ? `Show ${savedCount} previous note${savedCount>1?'s':''}` : 'Show current note');
+
+  // Unsaved row — always shown when textarea has content, always live
+  const unsavedRow = currentVal ? `<div class="gc-hist-row" style="background:#fffef5;border-bottom:1px solid #f0ead0">
+    <span class="note-author by-${currentMode}" style="font-size:10px;margin:0">${currentMode==='reviewer'?'Reviewer':'Mapper'}</span>
+    <span class="gc-hist-ts" style="color:#c8a000;font-style:italic">unsaved</span>
+    <span class="gc-hist-note">${currentVal.replace(/</g,'&lt;')}</span>
+  </div>` : '';
+
+  // Saved entries — newest first, growing list
+  const savedRows = [...hist].reverse().map(e => {
+    const byLabel = e.by === 'reviewer' ? 'Reviewer' : 'Mapper';
+    const byClass = e.by === 'reviewer' ? 'by-reviewer' : 'by-mapper';
+    return `<div class="gc-hist-row">
+      <span class="note-author ${byClass}" style="font-size:10px;margin:0">${byLabel}</span>
+      <span class="gc-hist-ts">${e.ts}</span>
+      <span class="gc-hist-note">${e.value.replace(/</g,'&lt;')}</span>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = unsavedRow + savedRows;
+}
+
+function renderGCNoteHistory(mapId) { renderGCHistory(mapId); }
+
 function toggleGCHistory(mapId) {
   const wrap = document.getElementById('gcwrap-'+mapId); if (!wrap) return;
   const isOpen = wrap.classList.toggle('open');
   const label = document.getElementById('gctoglabel-'+mapId);
-  const rounds = (mapExportHistory[mapId] || []).filter(r => r.generalComment && r.generalComment.trim());
-  if (label) label.textContent = isOpen ? 'Hide previous rounds' : `Show ${rounds.length} previous round${rounds.length!==1?'s':''}`;
+  const hist = mapGCNoteHistory[mapId] || [];
+  if (label) label.textContent = isOpen
+    ? 'Hide previous notes'
+    : (hist.length ? `Show ${hist.length} previous note${hist.length!==1?'s':''}` : 'No previous notes');
+}
+
+// ── Per-row live note history ────────────────────────────────
+function recordRowNote(rowId, value) {
+  const v = value.trim();
+  if (!v) return;
+  if (!rowNoteHistory[rowId]) rowNoteHistory[rowId] = [];
+  rowNoteHistory[rowId].push({ ts: getModeTs(), value: v, by: currentMode });
+}
+
+// Called on every keystroke — refreshes summary row preview + note history live preview
+function liveUpdateRow(rowId, mapId) {
+  const strip = document.getElementById('summary-' + mapId);
+  if (strip?.classList.contains('open')) refreshSummary(mapId);
+  renderRowNoteHistory(rowId, true); // true = called from user input, auto-expand
+  if (document.getElementById('cl-overlay')?.classList.contains('visible')) renderChangeLog();
+}
+
+function renderRowNoteHistory(rowId, fromInput) {
+  const wrap = document.getElementById('nh-wrap-'+rowId);
+  if (!wrap) return;
+  const hist = rowNoteHistory[rowId] || [];
+  const toggle = wrap.querySelector('.note-hist-toggle');
+  const body   = wrap.querySelector('.note-hist-body');
+  if (!toggle || !body) return;
+  const span = toggle.querySelector('.nh-label');
+
+  const ta = document.getElementById('ta-'+rowId);
+  const currentVal = ta ? ta.value.trim() : '';
+  const savedCount = hist.length;
+
+  // Hide entire widget if textarea is empty and no saved history
+  if (!currentVal && !savedCount) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+
+  // Auto-expand the first time content appears (user starts typing)
+  if (fromInput && !wrap.classList.contains('open')) {
+    wrap.classList.add('open');
+  }
+
+  // Label
+  if (span) span.textContent = savedCount ? `Note history (${savedCount} saved)` : 'Note history';
+
+  // Unsaved row — always shown when textarea has content, always live
+  const unsavedRow = currentVal ? `<div class="nh-row" style="background:#fffef5;border-bottom:1px solid #f0ead0">
+    <span class="note-author by-${currentMode}" style="font-size:10px;margin:0">${currentMode==='reviewer'?'Reviewer':'Mapper'}</span>
+    <span class="nh-ts" style="color:#c8a000;font-style:italic">unsaved</span>
+    <span class="nh-val">${currentVal.replace(/</g,'&lt;')}</span>
+  </div>` : '';
+
+  // Saved entries — newest first, growing list
+  const savedRows = [...hist].reverse().map(e => {
+    const byLabel = e.by === 'reviewer' ? 'Reviewer' : 'Mapper';
+    const byClass = e.by === 'reviewer' ? 'by-reviewer' : 'by-mapper';
+    return `<div class="nh-row">
+      <span class="note-author ${byClass}" style="font-size:10px;margin:0">${byLabel}</span>
+      <span class="nh-ts">${e.ts}</span>
+      <span class="nh-val">${e.value.replace(/</g,'&lt;')}</span>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = unsavedRow + (savedRows || (currentVal ? '' : '<div class="nh-empty">No previously saved notes.</div>'));
+}
+
+function toggleRowNoteHistory(rowId) {
+  const wrap = document.getElementById('nh-wrap-'+rowId);
+  if (wrap) wrap.classList.toggle('open');
 }
 
 // ── Build section block ───────────────────────────────────────
@@ -1670,10 +1885,18 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
         </td>
         <td>
           <div class="changes-cell">
-            <textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${lid}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${lid}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
-            <div class="row-actions">
+            <textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${lid}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${lid}');liveUpdateRow('${lid}','${mapId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
+            <div class="note-meta-row">
               <button class="na-btn${isNA?' active':''}" id="nabtn-${lid}" onclick="toggleNA('${lid}')">${isNA?'Unmark N/A':'N/A'}</button>
               <button class="clear-btn" onclick="clearRow('${lid}')">Clear</button>
+            </div>
+            <div class="note-hist-wrap" id="nh-wrap-${lid}">
+              <button class="note-hist-toggle" onclick="toggleRowNoteHistory('${lid}')">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="nh-label">Note history</span>
+                <span class="note-hist-chevron">▼</span>
+              </button>
+              <div class="note-hist-body"><div class="nh-empty">No saved notes yet.</div></div>
             </div>
           </div>
         </td>`;
@@ -1744,7 +1967,20 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
         <td><div class="cb${rd?.checked?' checked':''}" id="cb-${rowId}" onclick="toggleCb('${rowId}')"></div></td>
         <td><div class="el-name">${row.name}<span class="el-tag ${TAG_CLASS[row.tag]}">${TAG_LABEL[row.tag]}</span></div><div class="el-desc">${row.desc}</div></td>
         <td><div class="spec-selector" id="sel-${rowId}"><div class="spec-pills" onclick="toggleDropdown('${rowId}')" style="${isNA?'pointer-events:none':''}">${pillsHtml}</div><div class="spec-dropdown" id="dd-${rowId}"><div class="dd-select-all" onclick="selectAll('${rowId}')"><span class="sa-label">Select all</span></div>${optHtml}</div></div></td>
-        <td><div class="changes-cell"><textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${rowId}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${rowId}');updateNoteAuthor('${rowId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea><div class="note-author" id="nauthor-${rowId}"></div><div class="row-actions"><button class="na-btn${isNA?' active':''}" id="nabtn-${rowId}" onclick="toggleNA('${rowId}')">${isNA?'Unmark N/A':'N/A'}</button><button class="clear-btn" onclick="clearRow('${rowId}')">Clear</button></div></div></td>`;
+        <td><div class="changes-cell"><textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${rowId}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${rowId}');updateNoteAuthor('${rowId}');liveUpdateRow('${rowId}','${mapId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
+          <div class="note-meta-row">
+            <button class="na-btn${isNA?' active':''}" id="nabtn-${rowId}" onclick="toggleNA('${rowId}')">${isNA?'Unmark N/A':'N/A'}</button>
+            <button class="clear-btn" onclick="clearRow('${rowId}')">Clear</button>
+            <div class="note-author" id="nauthor-${rowId}"></div>
+          </div>
+          <div class="note-hist-wrap" id="nh-wrap-${rowId}">
+            <button class="note-hist-toggle" onclick="toggleRowNoteHistory('${rowId}')">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span class="nh-label">Note history</span>
+              <span class="note-hist-chevron">▼</span>
+            </button>
+            <div class="note-hist-body"><div class="nh-empty">No saved notes yet.</div></div>
+          </div></div></td>`;
       tbody.appendChild(tr);
 
       // History sub-row
@@ -1777,6 +2013,12 @@ function addMap(restoreData) {
   if (!mapExportHistory[mapId]) mapExportHistory[mapId] = [];
   if (restoreData?.exportHistory) mapExportHistory[mapId] = restoreData.exportHistory;
   if (restoreData?.mode) applyModeFromState(restoreData.mode);
+  // Restore live note histories
+  if (!mapGCNoteHistory[mapId]) mapGCNoteHistory[mapId] = [];
+  if (restoreData?.gcNoteHistory) mapGCNoteHistory[mapId] = restoreData.gcNoteHistory;
+  if (restoreData?.rowNoteHistories) {
+    Object.entries(restoreData.rowNoteHistories).forEach(([rowId, hist]) => { rowNoteHistory[rowId] = hist; });
+  }
   // Per-map section customization
   ensureMapExtStore(mapId);
   if (restoreData?.mapCustomSections)    mapCustomSections[mapId]    = restoreData.mapCustomSections;
@@ -1833,11 +2075,11 @@ function addMap(restoreData) {
       <span class="gc-toggle-chev">▼</span>
     </div>
     <div class="gc-body">
-      <textarea class="gc-textarea${gcHasContent?' has-content':''}" id="gcta-${mapId}" placeholder="Overall notes for this review round…" oninput="this.classList.toggle('has-content',this.value.trim().length>0)">${gcVal}</textarea>
+      <textarea class="gc-textarea${gcHasContent?' has-content':''}" id="gcta-${mapId}" placeholder="Overall notes for this review round…" oninput="this.classList.toggle('has-content',this.value.trim().length>0);renderGCHistory('${mapId}',true)">${gcVal}</textarea>
       <div class="gc-history-wrap" id="gcwrap-${mapId}">
         <button class="gc-history-toggle" onclick="toggleGCHistory('${mapId}')">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#aaa" stroke-width="1.5"/><path d="M8 5v3.5l2 1.5" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <span id="gctoglabel-${mapId}">No previous rounds</span>
+          <span id="gctoglabel-${mapId}">No previous notes</span>
           <span class="gc-history-chevron" id="gcchev-${mapId}">▼</span>
         </button>
         <div class="gc-history-body" id="gcbody-${mapId}"></div>
@@ -1903,6 +2145,11 @@ function addMap(restoreData) {
     checkSectionAllGood(mapId, si);
   });
   updateSummaryCount(mapId);
+  // Restore per-row note history displays after all rows are in DOM
+  Object.keys(rowNoteHistory).forEach(rowId => {
+    if (rowId.startsWith(mapId+'_')) renderRowNoteHistory(rowId);
+  });
+  renderGCHistory(mapId);
   switchTab(mapId);
   return mapId;
 }
@@ -1974,12 +2221,18 @@ function refreshSummary(mapId) {
       ? `<span class="${STATUS_CLS[item.status]}">${STATUS_LABEL[item.status]}</span>`
       : '<span style="color:#ccc">—</span>';
     const notePreview = item.note
-      ? item.note.replace(/\n/g,' ').substring(0,70) + (item.note.length > 70 ? '…' : '')
+      ? item.note.replace(/\n/g,' ')
       : '<span style="color:#ccc">—</span>';
+    const rs = rowState[item.rowId];
+    const author = rs?.noteAuthor;
+    const byChip = author
+      ? `<span class="note-author by-${author}" style="font-size:10px;font-style:normal;margin:0">${author==='reviewer'?'Reviewer':'Mapper'}</span>`
+      : '<span style="color:#ccc;font-size:10px">—</span>';
     const safeRowId = item.rowId.replace(/'/g,"\\'");
     return `<tr id="srow-${item.rowId}">
       <td title="${item.fieldName}">${item.secTitle ? `<span style="color:#bbb;font-size:10px">${item.secTitle} › </span>` : ''}${item.fieldName}</td>
       <td>${statusCell}</td>
+      <td>${byChip}</td>
       <td>${notePreview}</td>
       <td style="text-align:right;padding-right:4px">
         <button class="rectify-btn" onclick="rectifyRow('${safeRowId}','${mapId}')" title="Remove from summary (keeps history)">✓ Rectified</button>
@@ -1988,10 +2241,11 @@ function refreshSummary(mapId) {
   }).join('');
 
   body.innerHTML = `<table class="summary-table" style="table-layout:fixed">
-    <colgroup><col style="width:28%"><col style="width:12%"><col style="width:42%"><col style="width:18%"></colgroup>
+    <colgroup><col style="width:20%"><col style="width:10%"><col style="width:9%"><col><col style="width:14%"></colgroup>
     <tr style="border-bottom:1px solid #e0e0e0">
       <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">Field</td>
       <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">Status</td>
+      <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">By</td>
       <td style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#bbb;font-weight:600;padding-bottom:4px">Note</td>
       <td></td>
     </tr>
@@ -2108,6 +2362,9 @@ function collectState() {
     const attachedFile=mapAttach[mapId]||null;
     const exportHistory=mapExportHistory[mapId]||[];
     const generalComment=document.getElementById('gcta-'+mapId)?.value||'';
+    const gcNoteHistory=mapGCNoteHistory[mapId]||[];
+    const rowNoteHistories={};
+    Object.keys(rowNoteHistory).forEach(rowId=>{ if(rowId.startsWith(mapId+'_')) rowNoteHistories[rowId]=rowNoteHistory[rowId]; });
     // Per-map section customization — strip _open before saving
     const mapCustomSectionsClean = (mapCustomSections[mapId]||[]).map(cs=>({
       ...cs, rows: cs.rows.map(({_open,...r})=>r)
@@ -2116,14 +2373,33 @@ function collectState() {
     Object.entries(mapBuiltInExtensions[mapId]||{}).forEach(([si,rows])=>{
       mapBuiltInExtensionsClean[si] = rows.map(({_open,...r})=>r);
     });
-    maps.push({mapId,meta,rows,sectionOrder,sectionOpen,dynamicLayers,attachedFile,exportHistory,generalComment,mode:currentMode,mapCustomSections:mapCustomSectionsClean,mapBuiltInExtensions:mapBuiltInExtensionsClean});
+    maps.push({mapId,meta,rows,sectionOrder,sectionOpen,dynamicLayers,attachedFile,exportHistory,generalComment,gcNoteHistory,rowNoteHistories,mode:currentMode,mapCustomSections:mapCustomSectionsClean,mapBuiltInExtensions:mapBuiltInExtensionsClean});
   });
   // Strip internal _open flag from custom section rows before serialising
   return { maps };
 }
 
 // ── Save HTML ─────────────────────────────────────────────────
+function snapshotNoteHistories() {
+  document.querySelectorAll('.map-sheet').forEach(s => {
+    const mapId = s.id.replace('sheet-','');
+    // GC note
+    const gcVal = (document.getElementById('gcta-'+mapId)?.value || '').trim();
+    if (gcVal) recordGCNote(mapId, gcVal);
+    renderGCHistory(mapId); // re-render so saved entry appears, unsaved row stays
+    // Per-row notes
+    s.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+      if (tr.classList.contains('add-layer-row')) return;
+      const rowId = tr.id.replace('row-','');
+      const ta = tr.querySelector('.changes-textarea');
+      if (ta && ta.value.trim()) recordRowNote(rowId, ta.value);
+      renderRowNoteHistory(rowId); // re-render so saved entry appears, unsaved row stays
+    });
+  });
+}
+
 function saveHTML() {
+  snapshotNoteHistories();
   const {maps}=collectState();
   const proj=document.getElementById('project-name').value;
   const payload=JSON.stringify({maps,project:proj}).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
@@ -2195,7 +2471,8 @@ function saveExcel() {
         const note   = ta ? ta.value.trim() : '';
         const status = isNA ? 'na' : (rsSel ? rsSel.value : 'none');
         const elemName = elemNameLookup[rowId] || rowId;
-        if (note || status !== 'none') rowsSnapshot[rowId] = { note, status, elemName };
+        const hasSpecs = (rowState[rowId]?.selected?.length || 0) > 0;
+        if (note || status !== 'none' || hasSpecs) rowsSnapshot[rowId] = { note, status, elemName };
       });
       mapExportHistory[mapId].push({ round, ts, exportedBy, generalComment, rows: rowsSnapshot });
       // Re-render row history toggles
@@ -2528,6 +2805,196 @@ function saveExcel() {
     console.error('Export error:',err);
     alert('Export failed: '+err.message);
   }
+}
+
+// ── Change Log viewer ─────────────────────────────────────────
+function openChangeLog() {
+  renderChangeLog();
+  document.getElementById('cl-overlay').classList.add('visible');
+}
+function closeChangeLog() {
+  document.getElementById('cl-overlay').classList.remove('visible');
+}
+function renderChangeLog() {
+  const body = document.getElementById('cl-modal-body');
+  if (!body) return;
+
+  const statusLblMap = { none:'Unset', mapper:'Mapper to fix', guidance:'Need guidance', good:'Good', na:'N/A' };
+  function clChipHtml(status) {
+    const cls = { mapper:'cl-chip-mapper', guidance:'cl-chip-guidance', good:'cl-chip-good', none:'cl-chip-none', na:'cl-chip-none' };
+    return `<span class="cl-status-chip ${cls[status]||'cl-chip-none'}">${statusLblMap[status]||status}</span>`;
+  }
+  function byChip(mode) {
+    const cls = mode === 'reviewer' ? 'cl-chip-guidance' : 'cl-chip-mapper';
+    return `<span class="cl-status-chip ${cls}">${mode==='reviewer'?'Reviewer':'Mapper'}</span>`;
+  }
+
+  const mapSheets = Array.from(document.querySelectorAll('.map-sheet'));
+  const allHtml = [];
+
+  mapSheets.forEach(s => {
+    const mapId = s.id.replace('sheet-','');
+    const rounds = mapExportHistory[mapId] || [];
+    const gcHist = mapGCNoteHistory[mapId] || [];
+    const titleEl = s.querySelector('.map-title-input');
+    const mapTitle = (titleEl?.value?.trim() || 'Untitled Map').replace(/</g,'&lt;');
+    const mapInputs = Array.from(s.querySelectorAll('.card-meta input'));
+    const mapperName   = mapInputs[0]?.value || 'Mapper';
+    const reviewerName = mapInputs[1]?.value || 'Reviewer';
+
+    // ── Collect live unsaved data from DOM ──
+    const gcCurrentVal = (document.getElementById('gcta-'+mapId)?.value || '').trim();
+    const liveRows = [];
+    s.querySelectorAll('tbody tr[id^="row-"]').forEach(tr => {
+      if (tr.classList.contains('add-layer-row')) return;
+      const rowId = tr.id.replace('row-','');
+      const ta = tr.querySelector('.changes-textarea');
+      const val = ta ? ta.value.trim() : '';
+      if (!val) return;
+      const elNameEl = tr.querySelector('.el-name');
+      let elName = rowId;
+      if (elNameEl) elName = elNameEl.childNodes[0]?.textContent?.trim() || elNameEl.textContent.trim();
+      else { const ln = tr.querySelector('.layer-name-input'); if (ln) elName = ln.value?.trim() || 'Unnamed layer'; }
+      const rsSel = tr.querySelector('.row-status-select');
+      const status = tr.classList.contains('na-row') ? 'na' : (rsSel?.value || 'none');
+      const rs = rowState[rowId];
+      const author = rs?.noteAuthor || currentMode;
+      liveRows.push({ elName, val, status, author });
+    });
+
+    const hasAnything = gcCurrentVal || liveRows.length || gcHist.length ||
+      Object.keys(rowNoteHistory).some(k => k.startsWith(mapId+'_') && rowNoteHistory[k].length) ||
+      rounds.length;
+    if (!hasAnything) return;
+
+    let sectionsHtml = '';
+
+    // ── Current session (live, unsaved) ──
+    if (gcCurrentVal || liveRows.length) {
+      let sessionRows = '';
+      if (gcCurrentVal) {
+        sessionRows += `<tr style="background:#fffef5">
+          <td class="cl-el-name" style="color:#888;font-style:italic">General comment</td>
+          <td>${byChip(currentMode)}</td>
+          <td><span style="color:#c8a000;font-size:10px;font-style:italic">unsaved</span></td>
+          <td class="cl-note">${gcCurrentVal.replace(/</g,'&lt;')}</td>
+        </tr>`;
+      }
+      liveRows.forEach(r => {
+        sessionRows += `<tr style="background:#fffef5">
+          <td class="cl-el-name">${r.elName.replace(/</g,'&lt;')}</td>
+          <td>${byChip(r.author)}</td>
+          <td><span style="color:#c8a000;font-size:10px;font-style:italic">unsaved</span></td>
+          <td class="cl-note">${r.val.replace(/</g,'&lt;')}</td>
+        </tr>`;
+      });
+      sectionsHtml += `
+        <div class="cl-round-hdr" style="background:#fffde8;border:1px solid #e8d88a;border-bottom:none;border-radius:6px 6px 0 0;margin-top:10px">
+          <span class="cl-round-label" style="color:#8a6a00">Current session — unsaved</span>
+        </div>
+        <div class="cl-round-body">
+          <table class="cl-table">
+            <colgroup><col style="width:20%"><col style="width:10%"><col style="width:8%"><col></colgroup>
+            <thead><tr><th>Element</th><th>By</th><th>Status</th><th>Note</th></tr></thead>
+            <tbody>${sessionRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ── Saved note history (from Save HTML) ──
+    const rowHistEntries = [];
+    Object.keys(rowNoteHistory).forEach(rowId => {
+      if (!rowId.startsWith(mapId+'_') || !rowNoteHistory[rowId].length) return;
+      const tr = document.getElementById('row-'+rowId);
+      let elName = rowId;
+      if (tr) {
+        const el = tr.querySelector('.el-name');
+        if (el) elName = el.childNodes[0]?.textContent?.trim() || el.textContent.trim();
+        else { const ln = tr.querySelector('.layer-name-input'); if (ln) elName = ln.value?.trim() || 'Unnamed layer'; }
+      }
+      rowNoteHistory[rowId].forEach(e => rowHistEntries.push({ elName, ...e }));
+    });
+    // Sort newest first
+    rowHistEntries.sort((a,b) => b.ts.localeCompare(a.ts));
+
+    if (gcHist.length || rowHistEntries.length) {
+      let histRows = '';
+      // GC saves
+      [...gcHist].reverse().forEach(e => {
+        histRows += `<tr>
+          <td class="cl-el-name" style="color:#888;font-style:italic">General comment</td>
+          <td>${byChip(e.by)}</td>
+          <td style="color:#bbb;font-size:10px;font-family:monospace;white-space:nowrap">${e.ts}</td>
+          <td class="cl-note">${e.value.replace(/</g,'&lt;')}</td>
+        </tr>`;
+      });
+      // Row note saves
+      rowHistEntries.forEach(e => {
+        histRows += `<tr>
+          <td class="cl-el-name">${e.elName.replace(/</g,'&lt;')}</td>
+          <td>${byChip(e.by)}</td>
+          <td style="color:#bbb;font-size:10px;font-family:monospace;white-space:nowrap">${e.ts}</td>
+          <td class="cl-note">${e.value.replace(/</g,'&lt;')}</td>
+        </tr>`;
+      });
+      sectionsHtml += `
+        <div class="cl-round-hdr" style="background:#f5f5f2;border:1px solid #e0e0dc;border-bottom:none;border-radius:6px 6px 0 0;margin-top:10px">
+          <span class="cl-round-label" style="color:#666">Saved note history</span>
+          <span class="cl-round-ts">${gcHist.length + rowHistEntries.length} save${gcHist.length+rowHistEntries.length===1?'':'s'}</span>
+        </div>
+        <div class="cl-round-body">
+          <table class="cl-table">
+            <colgroup><col style="width:20%"><col style="width:10%"><col style="width:14%"><col></colgroup>
+            <thead><tr><th>Element</th><th>By</th><th>Saved</th><th>Note</th></tr></thead>
+            <tbody>${histRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ── Export rounds (Save Excel) ──
+    rounds.forEach((rnd, ri) => {
+      const isReviewer = rnd.exportedBy === 'reviewer';
+      const personName = isReviewer ? reviewerName : mapperName;
+      const dirLabel   = isReviewer ? `Round ${ri+1} — Reviewer Comments` : `Round ${ri+1} — Sent for Review`;
+      const dirClass   = isReviewer ? 'dir-reviewer' : 'dir-mapper';
+      const rowIds     = Object.keys(rnd.rows || {});
+
+      let rowsHtml = rowIds.length === 0 && !rnd.generalComment
+        ? `<tr><td colspan="4" class="cl-no-changes">(no changes recorded)</td></tr>`
+        : rowIds.map(rowId => {
+            const h = rnd.rows[rowId];
+            return `<tr>
+              <td class="cl-el-name">${(h.elemName||rowId).replace(/</g,'&lt;')}</td>
+              <td>${clChipHtml(h.status)}</td>
+              <td style="color:#bbb;font-size:10px;font-family:monospace;white-space:nowrap">${rnd.ts||''}</td>
+              <td class="cl-note">${h.note ? h.note.replace(/</g,'&lt;') : '<span style="color:#ccc;font-style:italic">—</span>'}</td>
+            </tr>`;
+          }).join('') + (rnd.generalComment ? `<tr class="cl-gc-row">
+              <td style="color:#888;font-style:italic">General comment</td><td></td><td></td>
+              <td class="cl-note">${rnd.generalComment.replace(/</g,'&lt;')}</td>
+            </tr>` : '');
+
+      sectionsHtml += `
+        <div class="cl-round-hdr ${dirClass}">
+          <span class="cl-round-label ${dirClass}">${dirLabel}</span>
+          <span class="cl-round-person">by ${personName}</span>
+          <span class="cl-round-ts">${rnd.ts||''}</span>
+        </div>
+        <div class="cl-round-body">
+          <table class="cl-table">
+            <colgroup><col style="width:20%"><col style="width:12%"><col style="width:14%"><col></colgroup>
+            <thead><tr><th>Element</th><th>Status</th><th>Timestamp</th><th>Note</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>`;
+    });
+
+    allHtml.push(`<div class="cl-map-block"><div class="cl-map-title">${mapTitle}</div>${sectionsHtml}</div>`);
+  });
+
+  body.innerHTML = allHtml.length
+    ? allHtml.join('')
+    : '<div class="cl-empty">No history yet — type a note or general comment, or Save HTML/Excel to record history.</div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────
