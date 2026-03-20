@@ -228,6 +228,8 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .na-btn.active { background: #f5f5f5; color: #888; border-color: #ccc; }
 .clear-btn { font-size: 10px; color: #ddd; background: none; border: none; cursor: pointer; font-family: inherit; }
 .clear-btn:hover { color: #888; }
+.clear-x-btn { position:absolute; top:3px; right:3px; width:16px; height:16px; font-size:13px; line-height:1; color:#bbb; background:none; border:none; cursor:pointer; padding:0; font-family:inherit; display:flex; align-items:center; justify-content:center; border-radius:3px; }
+.clear-x-btn:hover { color:#e05c5c; background:#fff0f0; }
 .note-meta-row { display: flex; align-items: center; gap: 8px; min-height: 18px; }
 
 /* ── Per-row history ── */
@@ -482,14 +484,14 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .cl-round-ts { font-size:10px; color:#bbb; font-family:'Courier New',monospace; }
 
 /* Round body table */
-.cl-round-body { border:1px solid #e0e0e0; border-radius:0 0 6px 6px; overflow:hidden; }
+.cl-round-body { border:1px solid #e0e0e0; border-radius:0 0 6px 6px; overflow:visible; }
 .cl-table { width:100%; border-collapse:collapse; font-size:11.5px; }
 .cl-table th { background:#f7f7f7; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:#999; padding:5px 10px; text-align:left; border-bottom:1px solid #eee; }
-.cl-table td { padding:6px 10px; border-bottom:1px solid #f2f2f0; vertical-align:top; color:#444; }
+.cl-table td { padding:6px 10px; border-bottom:1px solid #f2f2f0; vertical-align:top; color:#444; word-break:break-word; }
 .cl-table tr:last-child td { border-bottom:none; }
 .cl-table tr:hover td { background:#fafafa; }
 .cl-el-name { font-weight:500; color:#1a1a1a; }
-.cl-note { font-family:'Courier New',monospace; font-size:11px; color:#555; white-space:pre-wrap; }
+.cl-note { font-size:11px; color:#555; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; }
 .cl-status-chip { display:inline-flex; align-items:center; font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; }
 .cl-chip-mapper   { background:#fff3e8; color:#b05800; border:1px solid #e0a060; }
 .cl-chip-guidance { background:#e8f0fe; color:#1a56b0; border:1px solid #90b8f0; }
@@ -1470,14 +1472,17 @@ function toggleNA(rowId) {
     if (rsSel) { rsSel.value='none'; rsSel.className='row-status-select rs-na'; rsSel.disabled=true; if(rowState[rowId])rowState[rowId].rowStatus='none'; }
     if (ta) { ta.disabled=true; ta.style.pointerEvents='none'; ta.style.opacity='0.4'; }
     if (pillsEl) pillsEl.style.pointerEvents='none';
-    // Remove row tint
     tr?.classList.remove('rs-row-mapper','rs-row-guidance','rs-row-good');
     const cb = document.getElementById('cb-'+rowId);
     if (cb) cb.classList.remove('checked');
+    // Hide × button when NA
+    tr?.querySelector('.clear-x-btn')?.style.setProperty('display','none');
   } else {
     if (rsSel) { rsSel.disabled=false; rsSel.className='row-status-select rs-none'; }
     if (ta) { ta.disabled=false; ta.style.pointerEvents=''; ta.style.opacity=''; }
     if (pillsEl) pillsEl.style.pointerEvents='';
+    // Show × button when not NA
+    tr?.querySelector('.clear-x-btn')?.style.removeProperty('display');
   }
   const parts=rowId.split('_'); const mapId=parts[0], si=parseInt(parts[1]);
   recomputeMapMeta(mapId);
@@ -1619,10 +1624,14 @@ function renderRowHistoryToggle(rowId, mapId) {
   const currentVal = ta ? ta.value.trim() : '';
   const savedCount = hist.length;
   const noteHistVisible = currentVal || savedCount > 0;
+  const rs = rowState[rowId];
+  const lastEditedTs   = rs?.noteTs || '';
+  const lastEditedBy   = rs?.noteAuthor || currentMode;
+  const lastEditedLabel = lastEditedTs ? lastEditedTs : 'unsaved';
 
   const unsavedRow = currentVal ? `<div class="nh-row" style="background:#fffef5;border-bottom:1px solid #f0ead0">
-    <span class="note-author by-${currentMode}" style="font-size:10px;margin:0">${currentMode==='reviewer'?'Reviewer':'Mapper'}</span>
-    <span class="nh-ts" style="color:#c8a000;font-style:italic">unsaved</span>
+    <span class="note-author by-${lastEditedBy}" style="font-size:10px;margin:0">${lastEditedBy==='reviewer'?'Reviewer':'Mapper'}</span>
+    <span class="nh-ts" style="color:#c8a000">${lastEditedLabel}</span>
     <span class="nh-val">${currentVal.replace(/</g,'&lt;')}</span>
   </div>` : '';
 
@@ -1731,7 +1740,7 @@ function renderGCHistory(mapId, fromInput) {
   // Unsaved row — always shown when textarea has content, always live
   const unsavedRow = currentVal ? `<div class="gc-hist-row" style="background:#fffef5;border-bottom:1px solid #f0ead0">
     <span class="note-author by-${currentMode}" style="font-size:10px;margin:0">${currentMode==='reviewer'?'Reviewer':'Mapper'}</span>
-    <span class="gc-hist-ts" style="color:#c8a000;font-style:italic">unsaved</span>
+    <span class="gc-hist-ts" style="color:#c8a000">editing…</span>
     <span class="gc-hist-note">${currentVal.replace(/</g,'&lt;')}</span>
   </div>` : '';
 
@@ -1868,7 +1877,10 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
         <option value="good"${rowStatusVal==='good'?' selected':''}>Good</option>
       </select>`;
       tr.innerHTML = `
-        <td style="vertical-align:top;padding:8px 6px">${rowStatusSelectHtml}</td>
+        <td style="vertical-align:top;padding:8px 6px 6px">
+          ${rowStatusSelectHtml}
+          <button class="na-btn${isNA?' active':''}" id="nabtn-${lid}" onclick="toggleNA('${lid}')" style="margin-top:5px;display:block;width:100%">${isNA?'Unmark N/A':'N/A'}</button>
+        </td>
         <td style="vertical-align:middle;text-align:center;padding:8px 5px">
           <div class="cb${lrd.checked?' checked':''}" id="cb-${lid}" onclick="toggleCb('${lid}')"></div>
         </td>
@@ -1889,12 +1901,9 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
           </div>
         </td>
         <td>
-          <div class="changes-cell">
+          <div class="changes-cell" style="position:relative">
             <textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${lid}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${lid}');liveUpdateRow('${lid}','${mapId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
-            <div class="note-meta-row">
-              <button class="na-btn${isNA?' active':''}" id="nabtn-${lid}" onclick="toggleNA('${lid}')">${isNA?'Unmark N/A':'N/A'}</button>
-              <button class="clear-btn" onclick="clearRow('${lid}')">Clear</button>
-            </div>
+            <button class="clear-x-btn" onclick="clearRow('${lid}')" title="Clear note" style="${isNA?'display:none':''}">×</button>
           </div>
         </td>`;
       tbody.appendChild(tr);
@@ -1960,16 +1969,18 @@ function buildSectionBlock(mapId, secDef, si, restoreData) {
         <option value="good"${rowStatusVal==='good'?' selected':''}>Good</option>
       </select>`;
       tr.innerHTML = `
-        <td style="vertical-align:top;padding:8px 6px">${rowStatusSelectHtml}</td>
+        <td style="vertical-align:top;padding:8px 6px 6px">
+          ${rowStatusSelectHtml}
+          <button class="na-btn${isNA?' active':''}" id="nabtn-${rowId}" onclick="toggleNA('${rowId}')" style="margin-top:5px;display:block;width:100%">${isNA?'Unmark N/A':'N/A'}</button>
+        </td>
         <td><div class="cb${rd?.checked?' checked':''}" id="cb-${rowId}" onclick="toggleCb('${rowId}')"></div></td>
         <td><div class="el-name">${row.name}<span class="el-tag ${TAG_CLASS[row.tag]}">${TAG_LABEL[row.tag]}</span></div><div class="el-desc">${row.desc}</div></td>
         <td><div class="spec-selector" id="sel-${rowId}"><div class="spec-pills" onclick="toggleDropdown('${rowId}')" style="${isNA?'pointer-events:none':''}">${pillsHtml}</div><div class="spec-dropdown" id="dd-${rowId}"><div class="dd-select-all" onclick="selectAll('${rowId}')"><span class="sa-label">Select all</span></div>${optHtml}</div></div></td>
-        <td><div class="changes-cell"><textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${rowId}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${rowId}');updateNoteAuthor('${rowId}');liveUpdateRow('${rowId}','${mapId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
-          <div class="note-meta-row">
-            <button class="na-btn${isNA?' active':''}" id="nabtn-${rowId}" onclick="toggleNA('${rowId}')">${isNA?'Unmark N/A':'N/A'}</button>
-            <button class="clear-btn" onclick="clearRow('${rowId}')">Clear</button>
-            <div class="note-author" id="nauthor-${rowId}"></div>
-          </div></div></td>`;
+        <td><div class="changes-cell" style="position:relative">
+          <textarea class="changes-textarea${taVal.trim()?' has-content':''}" id="ta-${rowId}" oninput="this.classList.toggle('has-content',this.value.trim().length>0);updateSummaryCount('${mapId}');updateRowHistoryToggle('${rowId}');updateNoteAuthor('${rowId}');liveUpdateRow('${rowId}','${mapId}')"${isNA?' disabled style="pointer-events:none;opacity:0.4"':''}>${taVal}</textarea>
+          <button class="clear-x-btn" onclick="clearRow('${rowId}')" title="Clear note" style="position:absolute;top:4px;right:4px;${isNA?'display:none':''}">×</button>
+          <div class="note-author" id="nauthor-${rowId}" style="display:none"></div>
+        </div></td>`;
       tbody.appendChild(tr);
 
       // History sub-row
