@@ -333,7 +333,15 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .tab-add-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-bottom: 2px; font-size: 18px; color: #888; background: none; border: none; cursor: pointer; border-radius: 4px; font-family: inherit; }
 .tab-add-btn:hover { background: #d0d0cc; color: #1a1a1a; }
 
-.sections-btn-badge { font-size: 9.5px; font-weight: 600; padding: 1px 5px; border-radius: 8px; background: #2e7d32; color: #fff; margin-left: 2px; }
+.print-dropdown-wrap { position: relative; display: inline-flex; }
+.print-dropdown-wrap .btn { border-radius: 5px 0 0 5px; }
+.print-split-arrow { display: inline-flex; align-items: center; justify-content: center; padding: 0 7px; border-radius: 0 5px 5px 0; border: none; border-left: 1px solid rgba(0,0,0,.15); background: #fff; color: #1a1a1a; cursor: pointer; height: 100%; font-size: 10px; }
+.print-split-arrow:hover { background: #e8e8e8; }
+.print-dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: #fff; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 200; min-width: 170px; overflow: hidden; }
+.print-dropdown-menu.open { display: block; }
+.print-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 8px 13px; font-size: 12px; color: #1a1a1a; cursor: pointer; white-space: nowrap; font-family: inherit; background: none; border: none; width: 100%; text-align: left; }
+.print-dropdown-item:hover { background: #f5f5f5; }
+.print-dropdown-item svg { flex-shrink: 0; }
 
 /* ── Mode toggle ── */
 .mode-toggle { display: inline-flex; border: 1px solid #3a3a3a; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
@@ -462,6 +470,10 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
   .map-sheet    { display: block !important; height: auto !important; overflow: visible !important; page-break-after: always; }
   .map-sheet:last-child { page-break-after: auto; }
 
+  /* When body has print-active-only, hide all except active tab */
+  body.print-active-only .map-sheet          { display: none !important; }
+  body.print-active-only .map-sheet.active   { display: block !important; page-break-after: auto; }
+
   .map-header   { position: static !important; z-index: auto !important; border-bottom: 2px solid #1a1a1a; }
   .sections-scroll { flex: none !important; height: auto !important; overflow: visible !important; padding: 0; }
 
@@ -519,10 +531,23 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="1.5" stroke="white" stroke-width="1.4"/><line x1="5.5" y1="2" x2="5.5" y2="14" stroke="white" stroke-width="1.2"/><line x1="10.5" y1="2" x2="10.5" y2="14" stroke="white" stroke-width="1.2"/><line x1="1" y1="6.5" x2="15" y2="6.5" stroke="white" stroke-width="1.2"/><line x1="1" y1="10.5" x2="15" y2="10.5" stroke="white" stroke-width="1.2"/></svg>
         Save Excel
       </button>
-      <button class="btn btn-light" onclick="window.print()">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="3" y="1" width="10" height="7" rx="1" stroke="#1a1a1a" stroke-width="1.5"/><rect x="1" y="6" width="14" height="7" rx="1" stroke="#1a1a1a" stroke-width="1.5"/><rect x="4" y="10" width="8" height="5" rx=".5" stroke="#1a1a1a" stroke-width="1.5"/></svg>
-        Save PDF
-      </button>
+      <div class="print-dropdown-wrap" id="printWrap">
+        <button class="btn btn-light" onclick="printScope('active')">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="3" y="1" width="10" height="7" rx="1" stroke="#1a1a1a" stroke-width="1.5"/><rect x="1" y="6" width="14" height="7" rx="1" stroke="#1a1a1a" stroke-width="1.5"/><rect x="4" y="10" width="8" height="5" rx=".5" stroke="#1a1a1a" stroke-width="1.5"/></svg>
+          Save PDF
+        </button>
+        <button class="print-split-arrow" onclick="togglePrintMenu(event)" title="Print options">▾</button>
+        <div class="print-dropdown-menu" id="printMenu">
+          <button class="print-dropdown-item" onclick="printScope('active')">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#1a1a1a" stroke-width="1.4"/><line x1="4" y1="5" x2="12" y2="5" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round"/><line x1="4" y1="8" x2="12" y2="8" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round"/><line x1="4" y1="11" x2="8" y2="11" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Active tab only
+          </button>
+          <button class="print-dropdown-item" onclick="printScope('all')">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="12" height="12" rx="1.5" stroke="#1a1a1a" stroke-width="1.4"/><rect x="3" y="1" width="12" height="12" rx="1.5" stroke="#888" stroke-width="1.2"/><line x1="3" y1="7" x2="9" y2="7" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round"/><line x1="3" y1="10" x2="9" y2="10" stroke="#1a1a1a" stroke-width="1.2" stroke-linecap="round"/></svg>
+            All tabs
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -912,6 +937,28 @@ function renderElCards(cs) {
       </div>`;
     pane.appendChild(card);
   });
+}
+
+function togglePrintMenu(e) {
+  e.stopPropagation();
+  document.getElementById('printMenu').classList.toggle('open');
+}
+document.addEventListener('click', () => {
+  document.getElementById('printMenu')?.classList.remove('open');
+});
+
+let _printScope = 'all';
+function printScope(scope) {
+  _printScope = scope;
+  document.getElementById('printMenu')?.classList.remove('open');
+  if (scope === 'active') {
+    document.body.classList.add('print-active-only');
+  } else {
+    document.body.classList.remove('print-active-only');
+  }
+  window.print();
+  // Clean up after print dialog closes
+  setTimeout(() => document.body.classList.remove('print-active-only'), 500);
 }
 
 function toggleElCard(csId, ri) {
@@ -2222,12 +2269,23 @@ function saveExcel() {
     XLSX.utils.book_append_sheet(wb, ws0, 'Project Overview');
 
     // ── One sheet per map — dynamic audit columns ─────────────
+    // Track used sheet names to avoid collisions (e.g. two untitled maps)
+    const usedSheetNames = new Set(['Project Overview', 'Change Log']);
+    function uniqueSheetName(title) {
+      const base = (title||'Map').replace(/[\\\/\?\*\[\]:]/g,'').trim().substring(0,28)||'Map';
+      if (!usedSheetNames.has(base)) { usedSheetNames.add(base); return base; }
+      let i = 2;
+      while (usedSheetNames.has(base.substring(0,25)+' '+i)) i++;
+      const name = base.substring(0,25)+' '+i;
+      usedSheetNames.add(name); return name;
+    }
+
     state.forEach(m => {
       const mapId  = m.mapId;
       const history= mapExportHistory[mapId] || [];
       const numRounds = history.length; // grow with each export
       const totalCols = 7 + numRounds * 2;
-      const sheetName = (m.meta['Map title']||'Map').replace(/[\\\/\?\*\[\]:]/g,'').substring(0,28)||'Map';
+      const sheetName = uniqueSheetName(m.meta['Map title']);
       const aoa = [];
 
       // Title row
