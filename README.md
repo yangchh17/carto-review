@@ -4,7 +4,7 @@ A self-contained HTML tool for structured, multi-round cartographic map reviews 
 
 **No installation. No server. No account.** Open the file, fill it in, save it.
 
-🔗 **[Live demo carto-review](https://chhyang17.github.io/carto-review)** · [Download latest release](https://github.com/chhyang17/carto-review/releases/latest) · [Report an issue](https://github.com/chhyang17/carto-review/issues)
+🔗 **[Live demo carto-review](https://yangchh17.github.io/carto-review)** · [Download latest release](https://github.com/yangchh17/carto-review/releases/latest) · [Report an issue](https://github.com/yangchh17/carto-review/issues)
 
 
 
