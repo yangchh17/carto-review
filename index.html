@@ -303,7 +303,7 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
 .attach-panel.panel-floating { width: 580px; height: 440px; top: 58px; right: 18px; }
 .attach-panel.panel-fullscreen { position: fixed; inset: 0; width: 100% !important; height: 100% !important; border-radius: 0; border: none; resize: none; }
 .attach-panel.visible { display: flex; }
-.panel-toolbar { display: flex; align-items: center; gap: 7px; padding: 7px 11px; background: #222; border-bottom: 1px solid #2e2e2e; flex-shrink: 0; }
+.panel-toolbar { display: flex; align-items: center; gap: 7px; padding: 7px 11px; background: #222; border-bottom: 1px solid #2e2e2e; flex-shrink: 0; position: relative; }
 .panel-filename { flex: 1; font-size: 11.5px; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-tool-btn { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: none; border: 1px solid #333; border-radius: 5px; cursor: pointer; color: #888; font-family: inherit; flex-shrink: 0; }
 .panel-tool-btn:hover { background: #2e2e2e; color: #fff; border-color: #555; }
@@ -637,9 +637,16 @@ td:first-child { text-align: center; vertical-align: middle; padding: 7px 4px; }
     <button class="panel-tool-btn" onclick="document.getElementById('file-input').click()" title="Replace file">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M5 4l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12v2h12v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
-    <button class="panel-tool-btn" id="remove-file-btn" onclick="removeFileForMap()" title="Remove file" style="display:none">
+    <button class="panel-tool-btn" id="remove-file-btn" onclick="confirmRemoveFile()" title="Remove file" style="display:none">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
+    <div id="remove-file-confirm" style="display:none;position:absolute;top:38px;right:8px;background:#1a1a1a;border:1px solid #c0392b;border-radius:6px;padding:10px 12px;z-index:200;min-width:180px;box-shadow:0 4px 16px rgba(0,0,0,.5)">
+      <div style="font-size:11.5px;color:#fff;margin-bottom:8px">Remove attached file?</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="doRemoveFile()" style="flex:1;font-size:11px;padding:4px 0;background:#c0392b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:inherit">Remove</button>
+        <button onclick="cancelRemoveFile()" style="flex:1;font-size:11px;padding:4px 0;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;cursor:pointer;font-family:inherit">Cancel</button>
+      </div>
+    </div>
     <button class="panel-tool-btn" onclick="closePanel()" title="Minimise">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button>
@@ -1266,7 +1273,19 @@ function handleFileUpload(e) {
   reader.readAsDataURL(file);
   e.target.value = '';
 }
-function removeFileForMap() { if (!panelMapId) return; delete mapAttach[panelMapId]; renderPanelForMap(panelMapId); updateAttachBtn(panelMapId); }
+function confirmRemoveFile() {
+  document.getElementById('remove-file-confirm').style.display = 'block';
+}
+function cancelRemoveFile() {
+  document.getElementById('remove-file-confirm').style.display = 'none';
+}
+function doRemoveFile() {
+  document.getElementById('remove-file-confirm').style.display = 'none';
+  if (!panelMapId) return;
+  delete mapAttach[panelMapId];
+  renderPanelForMap(panelMapId);
+  updateAttachBtn(panelMapId);
+}
 function updateAttachBtn(mapId) {
   const btn = document.getElementById('attachbtn-'+mapId); if (!btn) return;
   const hasFile = !!mapAttach[mapId];
@@ -2417,8 +2436,10 @@ function saveHTML() {
   const src = '<!DOCTYPE html>\n' + clone.outerHTML.replace('</head>', restoreScript + '</head>');
   const blob=new Blob([src],{type:'text/html'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  const slug=proj.trim().replace(/[^a-z0-9]/gi,'_')||'review';
-  a.download=`map_review_${slug}.html`; a.click(); URL.revokeObjectURL(a.href);
+  const projSlug = proj.trim().replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'carto_review';
+  const today = new Date();
+  const dateStr = today.getFullYear()+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
+  a.download=`${projSlug}_${dateStr}.html`; a.click(); URL.revokeObjectURL(a.href);
 }
 
 // ── Save Excel ────────────────────────────────────────────────
@@ -2792,12 +2813,14 @@ function saveExcel() {
     XLSX.utils.book_append_sheet(wb, wsCL, 'Change Log');
 
     // ── 3. Trigger download ───────────────────────────────────
-    const slug = proj.replace(/[^a-z0-9]/gi,'_')||'review';
+    const projSlug = proj.trim().replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')||'carto_review';
+    const today = new Date();
+    const dateStr = today.getFullYear()+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
     const wbout= XLSX.write(wb,{bookType:'xlsx',type:'array'});
     const blob = new Blob([wbout],{type:'application/octet-stream'});
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href=url; a.download=`map_review_${slug}.xlsx`;
+    a.href=url; a.download=`${projSlug}_${dateStr}.xlsx`;
     document.body.appendChild(a); a.click();
     setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},300);
 
