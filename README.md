@@ -27,9 +27,10 @@ Map review in small GIS teams typically looks like this:
 This tool makes the review file the source of truth. Every round of comments is preserved. The file travels with the work.
 
 ---
-What's new in v1.2
-Export filename now follows project naming convention: PROJECT_YYYYMMDD.html / .xlsx
-Attached map file now requires confirmation before being removed (prevents accidental deletion)
+## What's new in v1.2
+
+- Export filename now follows project naming convention: `PROJECT_YYYYMMDD.html` / `.xlsx`
+- Attached map file now requires confirmation before being removed (prevents accidental deletion)
 
 ---
 ## Features
